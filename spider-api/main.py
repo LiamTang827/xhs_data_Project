@@ -18,6 +18,8 @@ app = FastAPI(
     description="一个用于分析小红书用户和笔记的API"
 )
 
+logger.info("程序启动：FastAPI app 实例已成功创建。") # <--- 添加这一行
+
 class Data_Spider():
     def __init__(self):
         self.xhs_apis = XHS_Apis()
@@ -145,8 +147,11 @@ class Data_Spider():
         logger.info(f'搜索关键词 {query} 笔记: {success}, msg: {msg}')
         return note_list, success, msg
 
+logger.info("程序启动：准备创建 Data_Spider 实例...") # <--- 添加这一行
 
 data_spider = Data_Spider() # 创建您的爬虫实例
+
+logger.info("程序启动：Data_Spider 实例已成功创建。") # <--- 添加这一行
 
 # --- 3. 定义 API 的输入/输出模型 (Pydantic) ---
 class UserNotesRequest(BaseModel):
