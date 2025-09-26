@@ -193,47 +193,6 @@ async def get_user_all_notes_api(request: UserNotesRequest):
         "data": note_list  # note_list 是爬虫返回的URL列表
     }
 
-@app.get("/api/v1/note/detail", response_model=NoteDetailResponse, summary="获取单篇笔记的详细信息 (使用服务器Cookie)")
-async def get_note_detail_api_get(
-    note_url: str = Query(..., description="小红书单篇笔记的URL")
-):
-    """
-    接收单篇笔记的URL作为查询参数，从服务器环境变量读取Cookie，调用爬虫获取其详细信息。
-    """
-    logger.info(f"开始处理单篇笔记详情请求 (GET): {note_url}")
-
-    # 从服务器环境变量中读取 Cookie
-    server_cookies = os.environ.get("XHS_COOKIE")
-    if not server_cookies:
-        logger.error("服务器配置错误：环境变量 XHS_COOKIE 未设置！")
-        raise HTTPException(
-            status_code=500,
-            detail={"success": False, "message": "服务器配置错误：缺少认证信息", "data": None}
-        )
-
-    # 调用你已有的 spider_note 方法
-    success, msg, note_info = data_spider.spider_note(
-        note_url=note_url,
-        cookies_str=server_cookies
-        # proxies 参数在GET请求中传递比较复杂，此处为保持简洁而省略
-    )
-
-    # 如果爬取失败或没有返回有效信息，则抛出错误
-    if not success or not note_info:
-        logger.warning(f"爬取笔记详情失败: {msg}")
-        raise HTTPException(
-            status_code=400,
-            detail={"success": False, "message": f"爬取失败: {msg}", "data": None}
-        )
-
-    logger.success(f"成功获取笔记详情 for note {note_url}")
-    return {
-        "success": True,
-        "message": "成功获取笔记详情",
-        "data": note_info
-    }
-
-
  
 # if __name__ == '__main__':
 #     """
