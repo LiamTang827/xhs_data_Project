@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict
 from utils.decorator import handle_spider_exceptions
 from dotenv import load_dotenv
+from xhs_utils.database import connect_to_mongo, close_mongo_connection, get_database
+
 
 load_dotenv()  # 从 .env 文件加载环境变量
 # 创建 FastAPI 应用实例
@@ -141,6 +143,23 @@ async def get_note_details_api(note_url: str):
     note_details, success, msg = data_spider.fetch_note_details(note_url, cookies)
     if not success:
         raise HTTPException(status_code=400, detail=f"爬取失败: {msg}")
+    db= get_database()
+    if db and note_details:
+        try:
+            # 獲取名為 "notes" 的集合 (collection)
+            note_collection = db.get_collection("notes")
+            
+            # 使用 update_one + upsert=True 來避免插入重複的筆記
+            await note_collection.update_one(
+                {'note_id': note_details['note_id']},
+                {'$set': note_details},
+                upsert=True
+            )
+            logger.info(f"筆記 {note_details['note_id']} 已成功儲存到 MongoDB。")
+        except Exception as e:
+            # 即使儲存失敗，我們仍然可以回傳資料給使用者，只記錄錯誤
+            logger.error(f"儲存筆記 {note_details.get('note_id')} 到 MongoDB 時發生錯誤: {e}")
+
     return {
         "success": success,
         "message": msg,
