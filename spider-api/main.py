@@ -20,6 +20,14 @@ app = FastAPI(
     description="一个用于分析小红书用户和笔记的API"
 )
 
+@app.on_event("startup")
+async def startup_db_client():
+    await connect_to_mongo()
+
+@app.on_event("shutdown")
+async def shutdown_db_client():
+    await close_mongo_connection()
+
 #定义
 class Data_Spider():
     def __init__(self):
@@ -106,6 +114,13 @@ class Data_Spider():
             logger.error(f"处理笔记 {note_url} 详情时发生未知错误: {e}")
             return None, False, f"处理数据时发生未知错误: {e}"
 
+def extract_user_id_from_url(url: str) -> Optional[str]:
+    """从类似 https://www.xiaohongshu.com/user/profile/5f... 的URL中提取用户ID"""
+    try:
+        return url.strip().split('/')[-1]
+    except Exception:
+        return None
+    
 data_spider = Data_Spider() 
 
 # --- 3. 定义 API 的输入/输出模型 (Pydantic) ---
@@ -128,6 +143,35 @@ async def get_user_notes_api(user_url: str):
     user_notes, success, msg = data_spider.fetch_user_all_notes(user_url, cookies)
     if not success:
         raise HTTPException(status_code=400, detail=f"爬取失败: {msg}")
+    user_id = extract_user_id_from_url(user_url)
+    db = get_database()
+    
+    # 确保成功提取到 user_id 并且数据库连接正常
+    if db and user_id:
+        try:
+            # 获取名为 "users" 的集合 (collection)
+            user_collection = db.get_collection("users")
+            
+            # 准备要存入/更新的数据文档
+            user_document = {
+                "user_id": user_id,
+                "user_url": user_url,
+                "note_urls": note_urls,
+                "note_count": len(note_urls),
+                "last_updated": datetime.datetime.now(datetime.timezone.utc) # 记录更新时间
+            }
+
+            # 使用 update_one + upsert=True 来插入或更新用户信息
+            await user_collection.update_one(
+                {'user_id': user_id},
+                {'$set': user_document},
+                upsert=True
+            )
+            logger.info(f"用户 {user_id} 的信息及笔记列表已成功存储到 MongoDB。")
+        except Exception as e:
+            # 即使存储失败，我们仍然可以返回数据给用户，只记录错误
+            logger.error(f"存储用户 {user_id} 到 MongoDB 时发生错误: {e}")
+
     return {
         "success": success,
         "message": msg,
