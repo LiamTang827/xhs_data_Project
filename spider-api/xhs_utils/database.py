@@ -12,10 +12,13 @@ database = db_client["xhs_data"]
 # 从数据库中获取名为 "notes" 的集合
 note_collection = database.get_collection("notes")
 
-# 从数据库中获取名为 "users" 的集合  <---  这就是我说的那一行
+# 从数据库中获取名为 "users" 的集合 
 user_collection = database.get_collection("users")
 # --------------------------------------------------------------------
 
+def get_database():
+    """返回数据库实例"""
+    return database
 
 async def connect_to_mongo():
     """在应用程式启动时建立数据库连接并检查"""
