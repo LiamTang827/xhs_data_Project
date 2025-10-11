@@ -1,0 +1,8 @@
+{
+  "user_urls": [
+    "https://www.xiaohongshu.com/user/profile/USER_ID_1?xsec_token=TOKEN_1",
+    "https://www.xiaohongshu.com/user/profile/USER_ID_2?xsec_token=TOKEN_2"
+  ],
+  "max_notes_per_run": 50,
+  "crawl_interval_seconds": 3
+}

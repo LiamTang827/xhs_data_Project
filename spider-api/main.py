@@ -20,14 +20,6 @@ app = FastAPI(
     description="一个用于分析小红书用户和笔记的API"
 )
 
-@app.on_event("startup")
-async def startup_db_client():
-    await connect_to_mongo()
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    await close_mongo_connection()
-
 #定义
 class Data_Spider():
     def __init__(self):

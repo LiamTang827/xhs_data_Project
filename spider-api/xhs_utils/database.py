@@ -7,7 +7,7 @@ MONGO_URI = os.getenv("MONGO_URI")
 db_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URI)
 
 # 获取在连接字符串(MONGO_URI)中指定的那个数据库，例如 xhs_data
-database = db_client.get_default_database() 
+database = db_client["xhs_data"]
 
 # 从数据库中获取名为 "notes" 的集合
 note_collection = database.get_collection("notes")

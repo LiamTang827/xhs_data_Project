@@ -1,0 +1,64 @@
+name: 小红书数据爬虫定时任务
+
+on:
+  # 定时触发（UTC时间）
+  schedule:
+    # 每天早上8点（北京时间16点）运行
+    - cron: '0 8 * * *'
+    # 每天晚上8点（北京时间次日4点）运行
+    - cron: '0 20 * * *'
+  
+  # 手动触发
+  workflow_dispatch:
+    inputs:
+      user_urls:
+        description: '要爬取的用户URL列表（用逗号分隔，留空则使用默认列表）'
+        required: false
+        type: string
+      crawl_notes:
+        description: '是否爬取笔记详情'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  spider:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+    
+    - name: 设置 Python 环境
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+    
+    - name: 安装依赖
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: 运行爬虫
+      env:
+        MONGO_URI: ${{ secrets.MONGO_URI }}
+        COOKIES: ${{ secrets.COOKIES }}
+        USER_URLS: ${{ github.event.inputs.user_urls }}
+        CRAWL_NOTES: ${{ github.event.inputs.crawl_notes }}
+      run: |
+        python run_spider.py
+    
+    - name: 上传日志
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: spider-logs
+        path: logs/
+        retention-days: 7
+    
+    - name: 发送通知（失败时）
+      if: failure()
+      run: |
+        echo "爬虫任务失败！请检查日志。"
+        # 这里可以添加其他通知方式，如发送邮件、Slack、微信等

@@ -41,3 +41,22 @@ spider-api/datas/
 *.bak
 *.tmp
 *.orig
+
+# 环境变量和配置文件
+.env
+.env.local
+.env.*.local
+
+# 爬虫配置（包含真实用户URL）
+spider_config.json
+
+# 日志文件
+logs/
+*.log
+
+# 数据文件
+datas/
+data/
+*.csv
+*.xlsx
+*.json.bak
