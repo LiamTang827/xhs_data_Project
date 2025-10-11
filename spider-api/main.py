@@ -1,15 +1,12 @@
-import json
 import os
+import datetime
 from loguru import logger
 from apis.xhs_pc_apis import XHS_Apis
-from xhs_utils.common_util import init
-from xhs_utils.data_util import handle_note_info, download_note, save_to_xlsx
-from fastapi import FastAPI ,HTTPException
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict
-from utils.decorator import handle_spider_exceptions
 from dotenv import load_dotenv
-from xhs_utils.database import connect_to_mongo, close_mongo_connection, get_database
+from xhs_utils.database import get_database, connect_to_mongo, close_mongo_connection
 
 
 load_dotenv()  # 从 .env 文件加载环境变量
@@ -148,8 +145,8 @@ async def get_user_notes_api(user_url: str):
             user_document = {
                 "user_id": user_id,
                 "user_url": user_url,
-                "note_urls": note_urls,
-                "note_count": len(note_urls),
+                "note_urls": user_notes,
+                "note_count": len(user_notes),
                 "last_updated": datetime.datetime.now(datetime.timezone.utc) # 记录更新时间
             }
 
