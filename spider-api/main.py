@@ -1,78 +1,37 @@
-import json
+from contextlib import asynccontextmanager
+import datetime
 import os
-import datetime  
+from pathlib import Path
 from loguru import logger
 from apis.xhs_pc_apis import XHS_Apis
-from xhs_utils.common_util import init
-from xhs_utils.data_util import handle_note_info, download_note, save_to_xlsx
-from fastapi import FastAPI ,HTTPException
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict
-from utils.decorator import handle_spider_exceptions
 from dotenv import load_dotenv
 from xhs_utils.database import connect_to_mongo, close_mongo_connection, get_database
-import motor.motor_asyncio
 
-# 确保在这里加载环境变量
-load_dotenv()
 
-MONGO_URI = os.getenv("MONGO_URI")
-logger.info(f"MONGO_URI 是否已加载: {'是' if MONGO_URI else '否'}")
+# 明确指定 .env 文件路径并加载
+env_path = Path(__file__).parent / '.env'
+load_dotenv(dotenv_path=env_path)
 
-if not MONGO_URI:
-    logger.error("❌ MONGO_URI 环境变量未设置！")
-    raise ValueError("MONGO_URI 环境变量未设置")
+# 定义 lifespan 上下文管理器
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 应用启动时
+    logger.info("🚀 应用启动中...")
+    await connect_to_mongo()
+    yield
+    # 应用关闭时
+    logger.info("🛑 应用关闭中...")
+    await close_mongo_connection()
 
-# 打印连接信息（隐藏密码）
-if MONGO_URI:
-    safe_uri = MONGO_URI.replace(MONGO_URI.split('://')[1].split('@')[0], '***:***')
-    logger.info(f"连接字符串: {safe_uri}")
-
-try:
-    db_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URI)
-    logger.info("MongoDB 客户端创建成功")
-except Exception as e:
-    logger.error(f"创建 MongoDB 客户端失败: {e}")
-    raise
-
-# 获取数据库
-database = db_client["xhs_data"]
-
-# 获取集合
-note_collection = database.get_collection("notes")
-user_collection = database.get_collection("users")
-
-def get_database():
-    """返回数据库实例"""
-    return database
-
-async def connect_to_mongo():
-    """测试数据库连接"""
-    logger.info("正在测试 MongoDB Atlas 连接...")
-    try:
-        await db_client.admin.command('ping', serverSelectionTimeoutMS=5000)
-        logger.success("✅ 成功连接到 MongoDB Atlas！")
-        
-        # 检查数据库和集合
-        db_list = await db_client.list_database_names()
-        logger.info(f"可用数据库: {db_list}")
-        
-        if "xhs_data" in db_list:
-            logger.info("数据库 'xhs_data' 存在")
-            collections = await db_client["xhs_data"].list_collection_names()
-            logger.info(f"xhs_data 数据库中的集合: {collections}")
-        else:
-            logger.warning("数据库 'xhs_data' 不存在")
-        
-    except Exception as e:
-        logger.error(f"连接测试失败: {e}")
-        raise
-
-# 创建 FastAPI 应用实例
+# 创建 FastAPI 应用实例，使用 lifespan
 app = FastAPI(
     title="小红书爬虫 API",
     version="1.0.0",
-    description="一个用于分析小红书用户和笔记的API"
+    description="一个用于分析小红书用户和笔记的API",
+    lifespan=lifespan
 )
 
 # 辅助函数：安全地将值转换为整数
@@ -373,28 +332,37 @@ async def get_user_notes_api(user_url: str):
             total_comments += safe_int(interact_info.get('comment_count'))
     
     db = get_database()
-    fan_count=user_detail.get('fans', '0')
-    fan_count=safe_int(fan_count)
-    # 直接使用 user_url 作为标识
-    if db is not None:
+    
+    # 准备完整的用户信息文档
+    if db is not None and user_detail:
         try:
             # 获取名为 "users" 的集合 (collection)
             user_collection = db.get_collection("users")
             
-            # 准备要存入/更新的数据文档
-            user_snapshot = {
-                "last_updated": datetime.datetime.now(datetime.timezone.utc),
-                "user_url": user_url, 
-                "red_id": user_detail.get('red_id', ''),  # 小红书号
-                "user_name": user_name,
-                "note_count": len(user_notes),
+            # 准备要存入/更新的完整数据文档
+            user_document = {
+                "user_id": user_id,
+                "user_url": user_url,
+                "user_name": user_detail.get('user_name', user_name),
+                "red_id": user_detail.get('red_id', ''),
+                "fans": user_detail.get('fans', '0'), 
+                "fans_count": safe_int(user_detail.get('fans', '0')),  # 转换为数字便于查询
+                "avatar": user_detail.get('avatar', ''),
+                "is_verified": user_detail.get('is_verified', False),
                 "note_urls": user_notes,
-                "fan_count": fan_count,
+                "note_count": len(user_notes),
                 "total_likes": total_likes,
+                "last_updated": datetime.datetime.now(datetime.timezone.utc)
             }
-            
 
-            await user_collection.insert_one(user_snapshot)
+            # 使用 update_one + upsert=True 来插入或更新用户信息
+            await user_collection.update_one(
+                {'user_id': user_id},
+                {'$set': user_document},
+                upsert=True
+            )
+            logger.info(f"用户 {user_id} ({user_document['user_name']}) 的完整信息已成功存储到 MongoDB。")
+            logger.info(f"用户数据: 粉丝={user_document['fans']}, 笔记数={user_document['note_count']}, 总点赞={total_likes}")
         except Exception as e:
             # 即使存储失败，我们仍然可以返回数据给用户，只记录错误
             logger.error(f"存储用户 {user_url} 到 MongoDB 时发生错误: {e}")
