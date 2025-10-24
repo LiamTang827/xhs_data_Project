@@ -65,27 +65,27 @@ jobs:
       
       # 6. 安装 Python 依赖
       - name: 📦 安装依赖
-        working-directory: ./spider-api
         run: |
           echo "当前工作目录: $(pwd)"
-          echo "列出当前目录文件:"
+          echo "列出根目录文件:"
           ls -la
+          echo "检查 spider-api 目录:"
+          ls -la spider-api/
+          echo "开始安装依赖..."
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r spider-api/requirements.txt
       
       # 7. 创建 .env 文件
       - name: 📝 配置环境变量
-        working-directory: ./spider-api
         run: |
-          echo "COOKIES='${{ secrets.COOKIES }}'" > .env
-          echo "MONGO_URI='${{ secrets.MONGO_URI }}'" >> .env
+          echo "COOKIES='${{ secrets.COOKIES }}'" > spider-api/.env
+          echo "MONGO_URI='${{ secrets.MONGO_URI }}'" >> spider-api/.env
           echo "环境变量已配置"
       
       # 8. 创建爬虫执行脚本
       - name: 📜 创建执行脚本
-        working-directory: ./spider-api
         run: |
-          cat > run_spider.py << 'EOF'
+          cat > spider-api/run_spider.py << 'EOF'
           import asyncio
           import os
           import sys
@@ -177,8 +177,8 @@ jobs:
       
       # 9. 执行爬虫
       - name: 🕷️ 执行爬虫任务
-        working-directory: ./spider-api
         run: |
+          cd spider-api
           python run_spider.py
           echo "爬虫任务执行完成"
       
