@@ -3,12 +3,12 @@ import datetime
 import os
 from pathlib import Path
 from loguru import logger
-from apis.xhs_pc_apis import XHS_Apis
+from app.apis.xhs_pc_apis import XHS_Apis
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict
 from dotenv import load_dotenv
-from xhs_utils.database import connect_to_mongo, close_mongo_connection, get_database
+from app.xhs_utils.database import connect_to_mongo, close_mongo_connection, if_database
 
 
 # 明确指定 .env 文件路径并加载
@@ -19,11 +19,11 @@ load_dotenv(dotenv_path=env_path)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 应用启动时
-    logger.info("🚀 应用启动中...")
+    logger.info("应用启动中...")
     await connect_to_mongo()
     yield
     # 应用关闭时
-    logger.info("🛑 应用关闭中...")
+    logger.info("应用关闭中...")
     await close_mongo_connection()
 
 # 创建 FastAPI 应用实例，使用 lifespan
@@ -331,7 +331,7 @@ async def get_user_notes_api(user_url: str):
             total_collects += safe_int(interact_info.get('collected_count'))
             total_comments += safe_int(interact_info.get('comment_count'))
     
-    db = get_database()
+    db = if_database()
     
     # 准备完整的用户信息文档
     if db is not None and user_detail:
