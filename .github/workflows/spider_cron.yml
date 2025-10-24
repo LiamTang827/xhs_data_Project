@@ -67,23 +67,23 @@ jobs:
       
       # 6. 安装 Python 依赖
       - name: 📦 安装依赖
-        working-directory: spider-api
         run: |
+          cd spider-api
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       
       # 7. 创建 .env 文件
       - name: 📝 配置环境变量
-        working-directory: spider-api
         run: |
+          cd spider-api
           echo "COOKIES='${{ secrets.XHS_COOKIES }}'" > .env
           echo "MONGO_URI='${{ secrets.MONGO_URI }}'" >> .env
           echo "环境变量已配置"
       
       # 8. 创建爬虫执行脚本
       - name: 📜 创建执行脚本
-        working-directory: spider-api
         run: |
+          cd spider-api
           cat > run_spider.py << 'EOF'
           import asyncio
           import os
@@ -176,12 +176,10 @@ jobs:
       
       # 9. 执行爬虫
       - name: 🕷️ 执行爬虫任务
-        working-directory: spider-api
-        env:
-          USER_URLS: ${{ github.event.inputs.user_urls }}
-          NOTE_URLS: ${{ github.event.inputs.note_urls }}
         run: |
+          cd spider-api
           python run_spider.py
+          echo "爬虫任务执行完成"
       
       # 10. 上传日志（如果失败）
       - name: 📤 上传日志
