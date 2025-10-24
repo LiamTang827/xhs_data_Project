@@ -42,12 +42,10 @@ jobs:
         uses: actions/checkout@v4
       
       # 2. 设置 Python 环境
-      - name: 🐍 设置 Python 3.11
-        uses: actions/setup-python@v4
+      - name: 🐍 设置 Python 3.10
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
-          cache-dependency-path: spider-api/requirements.txt
+          python-version: '3.10'
       
       # 3. 安装 Chrome 浏览器（Selenium 需要）
       - name: 🌐 安装 Chrome 浏览器
@@ -69,6 +67,9 @@ jobs:
       - name: 📦 安装依赖
         working-directory: ./spider-api
         run: |
+          echo "当前工作目录: $(pwd)"
+          echo "列出当前目录文件:"
+          ls -la
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       
