@@ -1,7 +1,7 @@
 import requests
-from xhs_utils.cookie_util import trans_cookies
-from xhs_utils.xhs_creator_util import get_common_headers, generate_xs, splice_str
-from xhs_utils.xhs_util import generate_x_b3_traceid
+from app.xhs_utils.cookie_util import trans_cookies
+from app.xhs_utils.xhs_creator_util import get_common_headers, generate_xs, splice_str
+from app.xhs_utils.xhs_util import generate_x_b3_traceid
 
 
 class XHS_Creator_Apis():

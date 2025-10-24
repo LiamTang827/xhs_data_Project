@@ -2,7 +2,7 @@ import json
 import math
 import random
 import execjs
-from xhs_utils.cookie_util import trans_cookies
+from app.xhs_utils.cookie_util import trans_cookies
 
 try:
     js = execjs.compile(open(r'../static/xhs_xs_xsc_56.js', 'r', encoding='utf-8').read())

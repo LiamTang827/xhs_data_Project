@@ -1,0 +1,203 @@
+name: 定时爬取小红书数据
+
+# 触发条件
+on:
+  # 定时触发（使用 cron 表达式）
+  schedule:
+    # 每天 UTC 时间 00:00 执行（北京时间 08:00）
+    - cron: '0 0 * * *'
+    # 每12小时执行一次
+    # - cron: '0 */12 * * *'
+    # 每周一早上8点（UTC 00:00）
+    # - cron: '0 0 * * 1'
+  
+  # 手动触发（可以在 GitHub Actions 页面手动运行）
+  workflow_dispatch:
+    inputs:
+      user_urls:
+        description: '要爬取的用户URL列表（逗号分隔）'
+        required: false
+        default: ''
+      note_urls:
+        description: '要爬取的笔记URL列表（逗号分隔）'
+        required: false
+        default: ''
+
+# 环境变量（从 GitHub Secrets 中读取）
+env:
+  COOKIES: ${{ secrets.XHS_COOKIES }}
+  MONGO_URI: ${{ secrets.MONGO_URI }}
+
+jobs:
+  spider-job:
+    name: 执行爬虫任务
+    runs-on: ubuntu-latest
+    
+    # 设置超时时间（30分钟）
+    timeout-minutes: 30
+    
+    steps:
+      # 1. 检出代码
+      - name: 📥 检出代码
+        uses: actions/checkout@v4
+      
+      # 2. 设置 Python 环境
+      - name: 🐍 设置 Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: spider-api/requirements.txt
+      
+      # 3. 安装 Chrome 浏览器（Selenium 需要）
+      - name: 🌐 安装 Chrome 浏览器
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+      
+      # 4. 安装 ChromeDriver
+      - name: 🚗 安装 ChromeDriver
+        uses: nanasess/setup-chromedriver@v2
+      
+      # 5. 验证 Chrome 和 ChromeDriver
+      - name: ✅ 验证浏览器环境
+        run: |
+          google-chrome --version
+          chromedriver --version
+      
+      # 6. 安装 Python 依赖
+      - name: 📦 安装依赖
+        working-directory: spider-api
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      # 7. 创建 .env 文件
+      - name: 📝 配置环境变量
+        working-directory: spider-api
+        run: |
+          echo "COOKIES='${{ secrets.XHS_COOKIES }}'" > .env
+          echo "MONGO_URI='${{ secrets.MONGO_URI }}'" >> .env
+          echo "环境变量已配置"
+      
+      # 8. 创建爬虫执行脚本
+      - name: 📜 创建执行脚本
+        working-directory: spider-api
+        run: |
+          cat > run_spider.py << 'EOF'
+          import asyncio
+          import os
+          import sys
+          from loguru import logger
+          from app.service import SpiderService
+          from app.xhs_utils.database import connect_to_mongo, close_mongo_connection
+          
+          # 配置日志
+          logger.add("spider_cron.log", rotation="10 MB", level="INFO")
+          
+          async def main():
+              """主执行函数"""
+              try:
+                  # 1. 连接数据库
+                  logger.info("🔌 正在连接数据库...")
+                  await connect_to_mongo()
+                  
+                  # 2. 创建 Service 实例
+                  service = SpiderService()
+                  cookies = os.getenv("COOKIES")
+                  
+                  if not cookies:
+                      logger.error("❌ COOKIES 环境变量未设置！")
+                      sys.exit(1)
+                  
+                  # 3. 读取要爬取的 URL（从环境变量或 GitHub Workflow 输入）
+                  user_urls_str = os.getenv("USER_URLS", "")
+                  note_urls_str = os.getenv("NOTE_URLS", "")
+                  
+                  # 如果没有指定 URL，这里可以从配置文件或数据库读取
+                  # 或者使用默认的测试 URL
+                  if not user_urls_str and not note_urls_str:
+                      logger.warning("⚠️ 未指定要爬取的 URL，使用配置文件...")
+                      # TODO: 从配置文件或数据库读取要爬取的 URL 列表
+                      user_urls_str = ""  # 这里可以设置默认 URL
+                  
+                  # 4. 处理用户 URL
+                  if user_urls_str:
+                      user_urls = [url.strip() for url in user_urls_str.split(",") if url.strip()]
+                      logger.info(f"📋 准备爬取 {len(user_urls)} 个用户")
+                      
+                      for idx, user_url in enumerate(user_urls, 1):
+                          try:
+                              logger.info(f"[{idx}/{len(user_urls)}] 正在处理用户: {user_url}")
+                              user_data = await service.process_user_data(user_url, cookies)
+                              logger.success(f"✅ 用户数据已保存: {user_data.get('user_id', 'unknown')}")
+                              
+                              # 获取该用户的笔记列表
+                              note_list = await service.process_user_note_list(user_url, cookies)
+                              logger.info(f"📝 获取到 {len(note_list)} 条笔记")
+                              
+                          except Exception as e:
+                              logger.error(f"❌ 处理用户失败: {user_url}, 错误: {e}")
+                              continue
+                  
+                  # 5. 处理笔记 URL
+                  if note_urls_str:
+                      note_urls = [url.strip() for url in note_urls_str.split(",") if url.strip()]
+                      logger.info(f"📋 准备爬取 {len(note_urls)} 条笔记")
+                      
+                      for idx, note_url in enumerate(note_urls, 1):
+                          try:
+                              logger.info(f"[{idx}/{len(note_urls)}] 正在处理笔记: {note_url}")
+                              note_data = await service.process_note_data(note_url, cookies)
+                              logger.success(f"✅ 笔记数据已保存")
+                              
+                          except Exception as e:
+                              logger.error(f"❌ 处理笔记失败: {note_url}, 错误: {e}")
+                              continue
+                  
+                  logger.success("🎉 所有任务执行完成！")
+                  
+              except Exception as e:
+                  logger.error(f"❌ 执行过程中发生错误: {e}")
+                  sys.exit(1)
+              
+              finally:
+                  # 6. 关闭数据库连接
+                  await close_mongo_connection()
+                  # 7. 关闭 Selenium
+                  if hasattr(service, 'api') and service.api:
+                      service.api.close()
+          
+          if __name__ == "__main__":
+              asyncio.run(main())
+          EOF
+          
+          echo "✅ 执行脚本已创建"
+      
+      # 9. 执行爬虫
+      - name: 🕷️ 执行爬虫任务
+        working-directory: spider-api
+        env:
+          USER_URLS: ${{ github.event.inputs.user_urls }}
+          NOTE_URLS: ${{ github.event.inputs.note_urls }}
+        run: |
+          python run_spider.py
+      
+      # 10. 上传日志（如果失败）
+      - name: 📤 上传日志
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: spider-logs
+          path: spider-api/spider_cron.log
+          retention-days: 7
+      
+      # 11. 发送通知（可选）
+      - name: 📧 发送执行结果通知
+        if: always()
+        run: |
+          if [ ${{ job.status }} == 'success' ]; then
+            echo "✅ 爬虫任务执行成功"
+          else
+            echo "❌ 爬虫任务执行失败"
+          fi
