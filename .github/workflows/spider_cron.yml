@@ -193,7 +193,7 @@ jobs:
       # 10. 上传日志（如果失败）
       - name: 📤 上传日志
         if: failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: spider-logs
           path: spider-api/spider_cron.log
