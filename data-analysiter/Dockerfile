@@ -22,4 +22,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # 7. 启动命令
-CMD run.py
+CMD ["/bin/sh", "-c", "uvicorn api.server:app --host 0.0.0.0 --port $PORT"]
