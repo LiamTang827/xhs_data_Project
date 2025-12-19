@@ -22,5 +22,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # 7. 启动命令
-# 注意：这里使用了 sh -c 来正确读取 Railway 提供的 $PORT 变量
-CMD uvicorn api.server:app --host 0.0.0.0 --port %PORT
+CMD uvicorn api.server:app --host 0.0.0.0 --port $PORT
