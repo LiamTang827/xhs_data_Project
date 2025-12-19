@@ -23,4 +23,4 @@ COPY . .
 
 # 7. 启动命令
 # 注意：这里使用了 sh -c 来正确读取 Railway 提供的 $PORT 变量
-CMD sh -c "uvicorn api.server:app --host 0.0.0.0 --port ${PORT:-5000}"
+CMD uvicorn api.server:app --host 0.0.0.0 --port %PORT
