@@ -1,0 +1,54 @@
+{
+  "creator": {
+    "followers": "Followers"
+  },
+  "header": {
+    "brand": "XHS Creator Studio",
+    "nav": {
+      "overview": "Network",
+      "trending": "Hot Topics",
+      "growth": "Growth Path"
+    }
+  },
+  "languageSwitcher": {
+    "label": "Language",
+    "en": "English",
+    "zh": "中文"
+  },
+  "home": {
+    "title": "Home",
+    "searchPlaceholder": "Search creators or keywords",
+    "hero": {
+      "title": "XHS Creator Growth Assistant",
+      "subtitle": "Analyze creators you follow, discover trending topics, and plan your growth path to stay ahead."
+    },
+    "network": {
+      "title": "Creator Network",
+      "description": "Visualize creators you follow and their relationships. Node size represents follower count. Drag nodes to see the physics simulation."
+    },
+    "trending": {
+      "title": "Hot Topics Board",
+      "description": "Discover the hottest topics and content angles with lower competition for faster growth."
+    },
+    "following": {
+      "title": "Following Analysis",
+      "description": "Deep analysis of creators you follow to help you find your positioning and content gaps."
+    },
+    "growth": {
+      "title": "Growth Path",
+      "description": "Stage-based action plans and learning targets tailored to your current follower count."
+    },
+    "selection": {
+      "headline": "Creator Details",
+      "followers": "Followers",
+      "engagement": "Engagement Rate",
+      "style": "Content Style",
+      "keywords": "Hot Keywords",
+      "cta": "Learn from this creator",
+      "empty": "Click a node in the network to view creator details and learn their content strategy."
+    }
+  },
+  "footer": {
+    "disclaimer": "Current data is simulated for demo purposes. Real data requires XHS API integration."
+  }
+}

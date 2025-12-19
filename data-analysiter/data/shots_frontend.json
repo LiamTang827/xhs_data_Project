@@ -1,0 +1,151 @@
+{
+  "shots": [
+    {
+      "id": 1,
+      "title": "奥运赛场上霹雳舞者凌空跃...",
+      "subtitle": "(起瞬间定格)",
+      "image": "/api/images/IMG_8779.JPG",
+      "narration": "奥运赛场上霹雳舞者凌空跃起瞬间定格",
+      "timeRange": "0:00-0:06",
+      "segmentId": 1
+    },
+    {
+      "id": 2,
+      "title": "这看似轻盈的动作实则是全...",
+      "subtitle": "(身数百块肌肉与关...)",
+      "image": "/api/images/IMG_8781 2.JPG",
+      "narration": "这看似轻盈的动作实则是全身数百块肌肉与关节的精密协作",
+      "timeRange": "0:06-0:12",
+      "segmentId": 1
+    },
+    {
+      "id": 3,
+      "title": "我们的大脑究竟如何在电光...",
+      "subtitle": "(石火之间从无数运...)",
+      "image": "/api/images/IMG_8782.JPG",
+      "narration": "我们的大脑究竟如何在电光石火之间从无数运动可能中筛选并完美执行出最佳方案",
+      "timeRange": "0:12-0:18",
+      "segmentId": 2
+    },
+    {
+      "id": 4,
+      "title": "起初我们试图用最直观的方...",
+      "subtitle": "(式理解自己)",
+      "image": "/api/images/IMG_8783.JPG",
+      "narration": "起初我们试图用最直观的方式理解自己",
+      "timeRange": "0:18-0:24",
+      "segmentId": 2
+    },
+    {
+      "id": 5,
+      "title": "17世纪的迪卡尔将人体视...",
+      "subtitle": "(为一台精密的液压...)",
+      "image": "/api/images/IMG_8784.JPG",
+      "narration": "17世纪的迪卡尔将人体视为一台精密的液压机械",
+      "timeRange": "0:24-0:30",
+      "segmentId": 2
+    },
+    {
+      "id": 6,
+      "title": "他认为我们的动作比如碰到...",
+      "subtitle": "(火焰缩手不过是一...)",
+      "image": "/api/images/IMG_8793.JPG",
+      "narration": "他认为我们的动作比如碰到火焰缩手不过是一连串反射的连锁反应",
+      "timeRange": "0:30-0:36",
+      "segmentId": 2
+    },
+    {
+      "id": 7,
+      "title": "像牵动绳线就能让木偶举手...",
+      "subtitle": "(一样简单)",
+      "image": "/api/images/IMG_8794.JPG",
+      "narration": "像牵动绳线就能让木偶举手一样简单",
+      "timeRange": "0:36-0:42",
+      "segmentId": 2
+    },
+    {
+      "id": 8,
+      "title": "这个理论统治了我们对运动...",
+      "subtitle": "(的理解近三百年却...)",
+      "image": "/api/images/IMG_8795.JPG",
+      "narration": "这个理论统治了我们对运动的理解近三百年却始终无法解释一个简单事实",
+      "timeRange": "0:42-0:48",
+      "segmentId": 2
+    },
+    {
+      "id": 9,
+      "title": "我们为何能如此流畅地行走...",
+      "subtitle": "(难道我们迈出的每...)",
+      "image": "/api/images/IMG_8796.JPG",
+      "narration": "我们为何能如此流畅地行走难道我们迈出的每一步",
+      "timeRange": "0:48-0:54",
+      "segmentId": 3
+    },
+    {
+      "id": 10,
+      "title": "都需要等待脚底传来的感觉...",
+      "subtitle": "(信号才能触发下一...)",
+      "image": "/api/images/IMG_8797.JPG",
+      "narration": "都需要等待脚底传来的感觉信号才能触发下一步吗直到20世纪初",
+      "timeRange": "0:54-1:00",
+      "segmentId": 3
+    },
+    {
+      "id": 11,
+      "title": "一个惊人的实验改变了我们...",
+      "subtitle": "(对运动控制的固有...)",
+      "image": "/api/images/IMG_8798.JPG",
+      "narration": "一个惊人的实验改变了我们对运动控制的固有理解科学家谢灵顿等人发现",
+      "timeRange": "1:00-1:06",
+      "segmentId": 3
+    },
+    {
+      "id": 12,
+      "title": "即便切除了大脑猫的脊髓依...",
+      "subtitle": "(然能指挥双腿进行...)",
+      "image": "/api/images/IMG_8799.JPG",
+      "narration": "即便切除了大脑猫的脊髓依然能指挥双腿进行交替行走",
+      "timeRange": "1:06-1:12",
+      "segmentId": 4
+    }
+  ],
+  "structureSegments": [
+    {
+      "id": 1,
+      "label": "开头引言",
+      "timeRange": "(0:00-0:10)",
+      "color": "blue",
+      "width": "15%"
+    },
+    {
+      "id": 2,
+      "label": "核心讲解",
+      "timeRange": "(0:10-0:43)",
+      "color": "green",
+      "width": "45%"
+    },
+    {
+      "id": 3,
+      "label": "案例分析",
+      "timeRange": "(0:43-1:04)",
+      "color": "purple",
+      "width": "30%"
+    },
+    {
+      "id": 4,
+      "label": "结尾总结",
+      "timeRange": "(1:04-1:12)",
+      "color": "orange",
+      "width": "10%"
+    }
+  ],
+  "totalDuration": "1:12",
+  "timeLabels": [
+    "0:00",
+    "0:14",
+    "0:28",
+    "0:43",
+    "0:57",
+    "1:12"
+  ]
+}

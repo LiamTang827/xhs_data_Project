@@ -1,0 +1,54 @@
+{
+  "creator": {
+    "followers": "粉丝数"
+  },
+  "header": {
+    "brand": "小红书创作者助手",
+    "nav": {
+      "overview": "关系网络",
+      "trending": "流量密码",
+      "growth": "成长路径"
+    }
+  },
+  "languageSwitcher": {
+    "label": "语言",
+    "en": "English",
+    "zh": "中文"
+  },
+  "home": {
+    "title": "首页",
+    "searchPlaceholder": "搜索创作者或关键词",
+    "hero": {
+      "title": "小红书创作者成长助手",
+      "subtitle": "分析你关注的创作者，发现流量密码，规划你的成长路径，让你快人一步抓住热点。"
+    },
+    "network": {
+      "title": "创作者关系网络",
+      "description": "看看你关注的创作者都在做什么，他们之间有什么联系。节点大小代表粉丝规模，拖动节点可以查看引力效果。"
+    },
+    "trending": {
+      "title": "流量密码榜",
+      "description": "分析当前最热的话题和内容方向，告诉你从哪个角度切入竞争更小。"
+    },
+    "following": {
+      "title": "关注圈分析",
+      "description": "深度分析你关注的创作者，帮你找到自己的定位和内容空白区。"
+    },
+    "growth": {
+      "title": "成长路径",
+      "description": "根据你的当前阶段，给出清晰的行动计划和学习对象。"
+    },
+    "selection": {
+      "headline": "创作者详情",
+      "followers": "粉丝数",
+      "engagement": "互动指数",
+      "style": "内容形式",
+      "keywords": "近期热点",
+      "cta": "学习TA的内容",
+      "empty": "点击网络图中的节点查看创作者详情，了解他们的内容风格。"
+    }
+  },
+  "footer": {
+    "disclaimer": "当前数据为演示用模拟数据，用于展示小红书创作者分析工具原型。真实数据需要连接小红书API。"
+  }
+}
