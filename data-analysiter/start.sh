@@ -1,16 +1,22 @@
 #!/bin/bash
+# XHS Data Analysis API Starter Script
 
-# 完整启动脚本
+# 确保在正确的目录
 cd "$(dirname "$0")"
 
-echo "🔄 第1步: 转换数据..."
-python3 -m generators.video_analysis
+# 激活虚拟环境
+source .venv/bin/activate
 
-if [ $? -ne 0 ]; then
-    echo "❌ 数据转换失败"
+# 加载环境变量（如果存在 .env 文件）
+if [ -f .env ]; then
+    export $(cat .env | grep -v '^#' | xargs)
+    echo "✅ 已加载 .env 配置"
+else
+    echo "⚠️  警告: 未找到 .env 文件，请复制 .env.example 并配置"
+    echo "   cp .env.example .env"
     exit 1
 fi
 
-echo ""
-echo "🚀 第2步: 启动FastAPI服务..."
-uvicorn api.server:app --host 0.0.0.0 --port 5001 --reload
+# 启动服务
+echo "🚀 启动 XHS Data Analysis API v2.0..."
+python api/server.py

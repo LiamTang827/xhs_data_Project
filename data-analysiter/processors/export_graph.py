@@ -1,15 +1,17 @@
 import json
 import glob
 import os
+import datetime
 import numpy as np
 from pathlib import Path
 import random
 
 # Paths
 BASE_DIR = Path(__file__).resolve().parent
-PROFILES_DIR = BASE_DIR / "user_profiles"
-ANALYSES_DIR = BASE_DIR / "analyses"
-FRONTEND_DATA_FILE = BASE_DIR.parent / "xhs-analyser-frontend/src/data/creators.ts"
+DATA_DIR = BASE_DIR.parent / "data"
+PROFILES_DIR = DATA_DIR / "user_profiles"
+ANALYSES_DIR = DATA_DIR / "analyses"
+FRONTEND_DATA_FILE = BASE_DIR.parent.parent / "xhs-analyser-frontend/src/data/creators.ts"
 
 def load_json(path):
     with open(path, "r", encoding="utf-8") as f:
@@ -202,5 +204,4 @@ export const trendingKeywordGroups: Array<{{
     print(f"Successfully wrote {len(nodes)} nodes and {len(edges)} edges to {FRONTEND_DATA_FILE}")
 
 if __name__ == "__main__":
-    import datetime
     main()

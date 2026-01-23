@@ -1,0 +1,102 @@
+"""
+Style Generation API Router - 使用Service层
+"""
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from typing import List, Dict
+
+from api.services import StyleGenerationService
+
+router = APIRouter(prefix="/api/style", tags=["style"])
+
+# 初始化服务（懒加载）
+_style_service = None
+
+
+def get_style_service() -> StyleGenerationService:
+    """获取风格生成服务实例"""
+    global _style_service
+    if _style_service is None:
+        _style_service = StyleGenerationService()
+    return _style_service
+
+
+# =====================================================
+# Request/Response Models
+# =====================================================
+
+class GenerateRequest(BaseModel):
+    """生成请求模型"""
+    creator_name: str
+    user_topic: str
+    platform: str = "xiaohongshu"
+
+
+class GenerateResponse(BaseModel):
+    """生成响应模型"""
+    success: bool
+    content: str
+    error: str = ""
+
+
+class CreatorInfo(BaseModel):
+    """创作者信息"""
+    id: str
+    name: str
+
+
+# =====================================================
+# API Endpoints
+# =====================================================
+
+@router.get("/creators", response_model=List[CreatorInfo])
+async def list_creators(platform: str = "xiaohongshu"):
+    """
+    获取可用的创作者列表
+    
+    Args:
+        platform: 平台类型（默认小红书）
+        
+    Returns:
+        创作者列表
+    """
+    try:
+        service = get_style_service()
+        creators = service.get_available_creators(platform)
+        return creators
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取创作者列表失败: {str(e)}")
+
+
+@router.post("/generate", response_model=GenerateResponse)
+async def generate_style_content(request: GenerateRequest):
+    """
+    生成风格化内容
+    
+    Args:
+        request: 生成请求（创作者名称、主题、平台）
+        
+    Returns:
+        生成结果
+    """
+    try:
+        service = get_style_service()
+        result = service.generate_content(
+            creator_name=request.creator_name,
+            user_topic=request.user_topic,
+            platform=request.platform
+        )
+        return result
+    except Exception as e:
+        return GenerateResponse(
+            success=False,
+            content="",
+            error=f"生成失败: {str(e)}"
+        )
+
+
+@router.get("/health")
+async def health_check():
+    """健康检查"""
+    return {"status": "ok", "service": "style_generation"}

@@ -73,7 +73,8 @@ def load_embedding(creator_name):
         if path.exists():
             try:
                 data = load_json(path)
-                return data.get('embedding', [])
+                # 兼容 analyze.py 的新输出格式 (user_style_embedding) 和旧格式 (embedding)
+                return data.get('user_style_embedding') or data.get('embedding', [])
             except Exception as e:
                 print(f'⚠️  读取embedding失败 {name}: {e}')
     

@@ -1,0 +1,298 @@
+"""
+Style Generation Service
+风格生成业务逻辑层 - 从数据库读取数据
+"""
+
+import os
+from typing import Dict, List, Any, Optional
+from openai import OpenAI
+
+from database import (
+    UserProfileRepository,
+    UserSnapshotRepository,
+    StylePromptRepository
+)
+
+
+class StyleGenerationService:
+    """风格生成服务"""
+    
+    def __init__(self):
+        # 初始化数据仓库
+        self.profile_repo = UserProfileRepository()
+        self.snapshot_repo = UserSnapshotRepository()
+        self.prompt_repo = StylePromptRepository()
+        
+        # 初始化DeepSeek API客户端
+        api_key = os.getenv("DEEPSEEK_API_KEY", "")
+        if not api_key:
+            raise ValueError("❌ DEEPSEEK_API_KEY环境变量未设置")
+        
+        self.client = OpenAI(
+            api_key=api_key,
+            base_url="https://api.deepseek.com"
+        )
+        
+        print("✅ StyleGenerationService 初始化完成")
+    
+    def get_available_creators(self, platform: str = "xiaohongshu") -> List[Dict[str, str]]:
+        """
+        获取可用的创作者列表
+        
+        Args:
+            platform: 平台类型
+            
+        Returns:
+            创作者列表 [{"id": "xxx", "name": "xxx"}, ...]
+        """
+        try:
+            profiles = self.profile_repo.get_all_profiles(platform=platform)
+            
+            creators = []
+            for profile in profiles:
+                creators.append({
+                    "id": profile.get("user_id", ""),
+                    "name": profile.get("nickname", "未知")
+                })
+            
+            return creators
+            
+        except Exception as e:
+            print(f"❌ 获取创作者列表失败: {e}")
+            return []
+    
+    def load_creator_profile(self, creator_name: str, platform: str = "xiaohongshu") -> Optional[Dict[str, Any]]:
+        """
+        加载创作者档案
+        
+        Args:
+            creator_name: 创作者昵称
+            platform: 平台类型
+            
+        Returns:
+            档案数据 or None
+        """
+        try:
+            profile = self.profile_repo.get_profile_by_nickname(creator_name, platform)
+            if not profile:
+                print(f"⚠️  未找到创作者档案: {creator_name}")
+                return None
+            
+            # 返回profile_data部分
+            return profile.get("profile_data", {})
+            
+        except Exception as e:
+            print(f"❌ 加载创作者档案失败: {e}")
+            return None
+    
+    def load_creator_notes(self, creator_name: str, platform: str = "xiaohongshu", limit: int = 5) -> List[Dict[str, Any]]:
+        """
+        加载创作者的笔记样本
+        
+        Args:
+            creator_name: 创作者昵称
+            platform: 平台类型
+            limit: 返回笔记数量
+            
+        Returns:
+            笔记列表
+        """
+        try:
+            # 先获取user_id
+            profile = self.profile_repo.get_profile_by_nickname(creator_name, platform)
+            if not profile:
+                print(f"⚠️  未找到创作者: {creator_name}")
+                return []
+            
+            user_id = profile.get("user_id", "")
+            if not user_id:
+                print(f"⚠️  创作者缺少user_id: {creator_name}")
+                return []
+            
+            # 获取笔记
+            notes = self.snapshot_repo.get_notes(user_id, platform, limit)
+            return notes
+            
+        except Exception as e:
+            print(f"❌ 加载创作者笔记失败: {e}")
+            return []
+    
+    def build_style_prompt(
+        self,
+        creator_profile: Dict[str, Any],
+        sample_notes: List[Dict[str, Any]],
+        user_topic: str,
+        creator_name: str
+    ) -> str:
+        """
+        构建风格生成提示词
+        
+        Args:
+            creator_profile: 创作者档案
+            sample_notes: 样本笔记
+            user_topic: 用户输入的主题
+            creator_name: 创作者昵称
+            
+        Returns:
+            完整的提示词
+        """
+        try:
+            # 从数据库获取提示词模板
+            prompt_data = self.prompt_repo.get_by_type("style_generation")
+            if not prompt_data:
+                print("⚠️  未找到提示词模板，使用默认模板")
+                template = self._get_default_template()
+            else:
+                template = prompt_data.get("template", self._get_default_template())
+            
+            # 提取档案信息
+            topics = ", ".join(creator_profile.get("topics", []))
+            content_style = creator_profile.get("content_style", "")
+            value_points = "\n".join([f"- {vp}" for vp in creator_profile.get("value_points", [])])
+            
+            # 格式化样本笔记
+            sample_notes_text = ""
+            for i, note in enumerate(sample_notes, 1):
+                title = note.get("title", "")
+                desc = note.get("desc", note.get("description", ""))
+                sample_notes_text += f"\n【笔记{i}】\n标题：{title}\n内容：{desc}\n"
+            
+            # 填充模板
+            prompt = template.format(
+                nickname=creator_name,
+                topics=topics,
+                content_style=content_style,
+                value_points=value_points,
+                sample_notes=sample_notes_text,
+                user_topic=user_topic
+            )
+            
+            return prompt
+            
+        except Exception as e:
+            print(f"❌ 构建提示词失败: {e}")
+            return self._get_fallback_prompt(creator_name, user_topic)
+    
+    def generate_content(
+        self,
+        creator_name: str,
+        user_topic: str,
+        platform: str = "xiaohongshu"
+    ) -> Dict[str, Any]:
+        """
+        生成风格化内容
+        
+        Args:
+            creator_name: 创作者昵称
+            user_topic: 用户主题
+            platform: 平台类型
+            
+        Returns:
+            生成结果 {"success": bool, "content": str, "error": str}
+        """
+        try:
+            # 1. 加载创作者档案
+            print(f"📥 加载创作者档案: {creator_name}")
+            creator_profile = self.load_creator_profile(creator_name, platform)
+            if not creator_profile:
+                return {
+                    "success": False,
+                    "content": "",
+                    "error": f"未找到创作者档案: {creator_name}"
+                }
+            
+            # 2. 加载笔记样本
+            print(f"📥 加载笔记样本...")
+            sample_notes = self.load_creator_notes(creator_name, platform, limit=5)
+            if not sample_notes:
+                print("⚠️  未找到笔记样本，将基于档案信息生成")
+            
+            # 3. 构建提示词
+            print(f"🔨 构建提示词...")
+            prompt = self.build_style_prompt(
+                creator_profile,
+                sample_notes,
+                user_topic,
+                creator_name
+            )
+            
+            # 4. 调用DeepSeek API
+            print(f"🤖 调用DeepSeek API生成内容...")
+            response = self.client.chat.completions.create(
+                model="deepseek-chat",
+                messages=[
+                    {"role": "system", "content": "你是一位专业的内容创作助手。"},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7,
+                max_tokens=2000
+            )
+            
+            # 5. 提取生成内容
+            generated_content = response.choices[0].message.content
+            print(f"✅ 内容生成成功")
+            
+            return {
+                "success": True,
+                "content": generated_content,
+                "error": ""
+            }
+            
+        except Exception as e:
+            error_msg = f"生成失败: {str(e)}"
+            print(f"❌ {error_msg}")
+            return {
+                "success": False,
+                "content": "",
+                "error": error_msg
+            }
+    
+    def _get_default_template(self) -> str:
+        """获取默认提示词模板"""
+        return """你是一位经验丰富的小红书内容创作者，擅长模仿不同博主的风格进行创作。
+
+【被模仿者档案】
+昵称：{nickname}
+内容主题：{topics}
+内容风格：{content_style}
+价值点：{value_points}
+
+【参考笔记】（以下是该博主的典型笔记）
+{sample_notes}
+
+【任务】
+请以这位博主的风格，为主题"{user_topic}"创作一篇小红书笔记。
+
+【要求】
+1. 文案风格要高度贴近该博主的特点
+2. 保持该博主常用的表达方式和语气
+3. 体现该博主的价值观和内容侧重点
+4. 标题要吸引人，正文要有亮点
+5. 适当添加emoji增加活力
+6. 最后给出3-5个相关话题标签
+
+【输出格式】
+标题：[在这里输出标题]
+
+正文：
+[在这里输出正文内容]
+
+话题标签：
+#标签1 #标签2 #标签3
+"""
+    
+    def _get_fallback_prompt(self, creator_name: str, user_topic: str) -> str:
+        """获取降级提示词"""
+        return f"""请以"{creator_name}"的风格，为主题"{user_topic}"创作一篇小红书笔记。
+
+要求：
+1. 标题吸引人
+2. 内容真实有价值
+3. 添加适当的emoji
+4. 给出3-5个话题标签
+
+输出格式：
+标题：[标题]
+正文：[正文]
+话题标签：#标签1 #标签2
+"""

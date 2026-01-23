@@ -33,7 +33,7 @@ EMBED_MODEL = "text-embedding-3-small"
 
 # 可在此处直接填写 API Key 或 URL（仅用于本地快速测试；生产环境建议使用环境变量或更安全的密钥管理）
 DEFAULT_OPENAI_API_KEY = ""            # <-- 在这里填入 OpenAI API Key（可选）
-DEFAULT_DEEPSEEK_API_KEY = "sk-fc8855de5f0f4bfd9760e03bcd67e2ef"          # <-- 在这里填入 Deepseek API Key（可选）
+DEFAULT_DEEPSEEK_API_KEY = None  # 从环境变量 DEEPSEEK_API_KEY 读取
 DEFAULT_DEEPSEEK_CHAT_URL = "https://api.deepseek.com/v1/chat/completions"         # <-- 在这里填入 Deepseek chat endpoint（可选）
 DEFAULT_DEEPSEEK_EMBED_URL = "https://api.deepseek.com/embeddings"        # <-- 在这里填入 Deepseek embeddings endpoint（可选）
 
@@ -104,11 +104,15 @@ def call_chat(api_key: str, messages: List[Dict[str, str]], provider: str = "ope
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     payload = {"model": CHAT_MODEL, "messages": messages, "temperature": 0.0}
 
-    # 根据 provider 选择请求 URL
+
+    # 根据 provider 选择请求 URL 和 模型
     if provider == "deepseek":
         url = DEEPSEEK_CHAT_URL or os.environ.get("DEEPSEEK_CHAT_URL")
+        payload["model"] = "deepseek-chat"
     else:
         url = OPENAI_CHAT_URL
+        # payload["model"] already defaults to CHAT_MODEL (gpt-4o)
+
 
     if not url:
         raise RuntimeError(f"未配置 provider '{provider}' 的 chat URL")

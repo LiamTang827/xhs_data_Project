@@ -28,21 +28,24 @@ import sys
 sys.path.append(str(Path(__file__).resolve().parent))
 
 from clean_data import process_from_mongo
-import export_graph_data
+import export_graph
 
 # Configuration
 # Use env vars or fallback to the key user provided in test_api.py
-API_KEY = os.environ.get("DEEPSEEK_API_KEY") or "sk-fc8855de5f0f4bfd9760e03bcd67e2ef"
-BASE_URL = os.environ.get("DEEPSEEK_BASE_URL") or "https://api.deepseek.com"
+API_KEY = os.environ.get("DEEPSEEK_API_KEY")
+if not API_KEY:
+    raise ValueError("DEEPSEEK_API_KEY environment variable is required")
+BASE_URL = os.environ.get("DEEPSEEK_BASE_URL") or "https://api.deepseek.com/v1"
 
 BASE_DIR = Path(__file__).resolve().parent
-SNAPSHOTS_DIR = BASE_DIR / "snapshots"
-PROFILES_DIR = BASE_DIR / "user_profiles"
-ANALYSES_DIR = BASE_DIR / "analyses"
+DATA_DIR = BASE_DIR.parent / "data"
+SNAPSHOTS_DIR = DATA_DIR / "snapshots"
+PROFILES_DIR = DATA_DIR / "user_profiles"
+ANALYSES_DIR = DATA_DIR / "analyses"
 
-SNAPSHOTS_DIR.mkdir(exist_ok=True)
-PROFILES_DIR.mkdir(exist_ok=True)
-ANALYSES_DIR.mkdir(exist_ok=True)
+SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+PROFILES_DIR.mkdir(parents=True, exist_ok=True)
+ANALYSES_DIR.mkdir(parents=True, exist_ok=True)
 
 # Initialize OpenAI client for Deepseek
 client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
@@ -60,9 +63,11 @@ def step_fetch_snapshots(user_id=None):
     
     # We need to list users first to iterate them
     from pymongo import MongoClient
-    # Use URI from clean_data or default
-    uri = "mongodb+srv://xhs_user:S8VVePhiUHfT6H5U@xhs-cluster.omeyngi.mongodb.net/?retryWrites=true&w=majority&appName=xhs-Cluster"
-    db_name = "media_crawler"
+    # Use URI from environment variable
+    uri = os.environ.get("MONGO_URI")
+    if not uri:
+        raise ValueError("MONGO_URI environment variable is required")
+    db_name = os.environ.get("DATABASE_NAME", "tikhub_xhs")
     
     try:
         client_mongo = MongoClient(uri)
@@ -257,7 +262,7 @@ def step_generate_embeddings():
 def step_export_graph():
     print("\n--- Step 4: Exporting Graph Data ---")
     try:
-        export_graph_data.main()
+        export_graph.main()
     except Exception as e:
         print(f"Error exporting graph: {e}")
 

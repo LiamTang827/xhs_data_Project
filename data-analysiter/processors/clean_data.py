@@ -25,11 +25,10 @@ import re
 import pathlib
 
 
-DEFAULT_URI = os.environ.get(
-    "MONGODB_URI",
-    "mongodb+srv://xhs_user:S8VVePhiUHfT6H5U@xhs-cluster.omeyngi.mongodb.net/?retryWrites=true&w=majority&appName=xhs-Cluster",
-)
-DEFAULT_DB = "media_crawler"
+DEFAULT_URI = os.environ.get("MONGO_URI")
+if not DEFAULT_URI:
+    raise ValueError("MONGO_URI environment variable is required")
+DEFAULT_DB = os.environ.get("DATABASE_NAME", "tikhub_xhs")
 
 
 def to_int(v, default=0):

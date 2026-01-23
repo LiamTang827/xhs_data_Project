@@ -1,0 +1,31 @@
+{
+    "user_basic": {
+        "user_id": "57576ed25e87e7791b68777d",
+        "nickname": "硅谷樱花小姐姐🌸",
+        "avatar": "",
+        "desc": "",
+        "fans": 0,
+        "interaction": 0,
+        "tag_list": {},
+        "gender": "",
+        "ip_location": "",
+        "last_modify_ts": 1768407221241
+    },
+    "content_topics": [
+        "硅谷",
+        "ProsGrowAI",
+        "创业",
+        "openai",
+        "CES2026",
+        "CES",
+        "ai",
+        "ProsGrow"
+    ],
+    "content_style": "硅谷樱花小姐姐🌸的内容风格",
+    "audience": "对科技和生活感兴趣的用户",
+    "value_points": [
+        "真实记录",
+        "生活分享"
+    ],
+    "content_clusters": {}
+}

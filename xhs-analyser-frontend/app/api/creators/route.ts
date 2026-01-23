@@ -21,8 +21,10 @@ const BASE_DIR = WORKSPACE_ROOT.endsWith('xhs-analyser-frontend')
   ? path.join(WORKSPACE_ROOT, '..') 
   : WORKSPACE_ROOT
 
-const SNAPSHOTS_DIR = path.join(BASE_DIR, 'data-analysiter', 'snapshots')
-const ANALYSES_DIR = path.join(BASE_DIR, 'data-analysiter', 'analyses')
+const DATA_DIR = path.join(BASE_DIR, 'data-analysiter', 'data')
+const CREATORS_DATA_FILE = path.join(DATA_DIR, 'creators_data.json')
+const SNAPSHOTS_DIR = path.join(BASE_DIR, 'data-analysiter', 'data', 'snapshots')
+const ANALYSES_DIR = path.join(BASE_DIR, 'data-analysiter', 'data', 'analyses')
 const EMBED_SIM_THRESHOLD = parseFloat(process.env.EMBED_SIM_THRESHOLD || '0.6')
 
 let cachedClient: MongoClient | null = null
@@ -227,7 +229,23 @@ function buildFromSnapshots() {
 
 export async function GET(request: Request) {
   try {
-    // Prefer snapshots folder first (user requested snapshots -> frontend)
+    console.log('[DEBUG] BASE_DIR:', BASE_DIR)
+    console.log('[DEBUG] CREATORS_DATA_FILE:', CREATORS_DATA_FILE)
+    console.log('[DEBUG] File exists:', fs.existsSync(CREATORS_DATA_FILE))
+    
+    // Priority 1: Use pre-generated creators_data.json
+    if (fs.existsSync(CREATORS_DATA_FILE)) {
+      console.log('✅ Loading from creators_data.json')
+      const raw = fs.readFileSync(CREATORS_DATA_FILE, 'utf8')
+      const data = JSON.parse(raw)
+      console.log('[DEBUG] Loaded data:', { 
+        creatorsCount: data.creators?.length, 
+        edgesCount: data.creatorEdges?.length 
+      })
+      return NextResponse.json({ source: 'creators_data.json', ...data })
+    }
+
+    // Priority 2: Build from snapshots folder (user requested snapshots -> frontend)
     try {
       console.log('[api/creators] Checking snapshots dir:', SNAPSHOTS_DIR)
       if (fs.existsSync(SNAPSHOTS_DIR)) {

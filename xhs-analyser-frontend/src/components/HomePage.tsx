@@ -47,8 +47,8 @@ export function HomePage() {
     let mounted = true;
     (async () => {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-        const r = await fetch(`${API_URL}/api/creators`);
+        // Use Next.js API route instead of external FastAPI
+        const r = await fetch('/api/creators');
         if (!mounted) return;
 
           const contentType = r.headers.get('content-type') || '';
@@ -64,6 +64,7 @@ export function HomePage() {
           }
 
           const json = await r.json();
+          console.log('[HomePage] Loaded creators data:', json);
           if (!json) return;
 
           // prefer server-provided shapes; fall back to local generation
@@ -99,6 +100,16 @@ export function HomePage() {
             <p className="mt-4 max-w-3xl text-lg text-black/70">
               {t("hero.subtitle")}
             </p>
+            
+            {/* 新功能入口 */}
+            <div className="mt-6 flex gap-4">
+              <Link
+                href="/zh/style-generator"
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-white font-medium hover:bg-blue-700 transition-colors"
+              >
+                ✨ AI风格生成器
+              </Link>
+            </div>
           </div>
         </section>
 

@@ -1,0 +1,49 @@
+{
+  "user_basic": {
+    "user_id": "5b21847911be1079a51a573c",
+    "nickname": "小熊说你超有爱",
+    "avatar": "",
+    "desc": "",
+    "fans": 0,
+    "interaction": 0,
+    "tag_list": {},
+    "gender": "",
+    "ip_location": "",
+    "last_modify_ts": 1768665098633
+  },
+  "content_topics": [
+    "创业招募",
+    "CES展会",
+    "孵化器经历",
+    "团队介绍",
+    "创业动机",
+    "VC面试",
+    "湾区生活",
+    "AI创业",
+    "个人介绍",
+    "投资阅读",
+    "互动测试"
+  ],
+  "content_style": "一位在硅谷和深圳等地活跃的科技创业者，拥有谷歌、亚马逊等大厂背景，目前致力于AI和硬件领域的创业项目。她以“小熊”自称，形象亲切，分享真实且充满激情的创业历程。 专业中带着亲切与幽默，语气积极向上，充满能量，善于用轻松的口吻讲述严肃的创业话题，并常使用表情符号增加互动感。",
+  "audience": "对科技创业、硅谷文化、AI领域感兴趣的人群，尤其是 aspiring entrepreneurs、初创公司员工、投资人以及对职业发展和个人成长有追求的专业人士和独立女性。",
+  "value_points": [
+    "科技创业",
+    "人工智能",
+    "硬件孵化",
+    "硅谷生态",
+    "团队建设",
+    "个人成长",
+    "MBTI性格测试",
+    "加州生活"
+  ],
+  "content_clusters": {},
+  "statistics": {
+    "notes_count": 16,
+    "total_likes": 174,
+    "total_comments": 61,
+    "total_shares": 6,
+    "total_collects": 40
+  },
+  "generated_at": "2026-01-18T00:18:07.368768",
+  "source": "snapshot data"
+}
