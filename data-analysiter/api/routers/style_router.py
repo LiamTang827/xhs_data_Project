@@ -50,7 +50,7 @@ class CreatorInfo(BaseModel):
 # API Endpoints
 # =====================================================
 
-@router.get("/creators", response_model=List[CreatorInfo])
+@router.get("/creators")
 async def list_creators(platform: str = "xiaohongshu"):
     """
     获取可用的创作者列表
@@ -59,12 +59,15 @@ async def list_creators(platform: str = "xiaohongshu"):
         platform: 平台类型（默认小红书）
         
     Returns:
-        创作者列表
+        创作者列表，包含success标志
     """
     try:
         service = get_style_service()
         creators = service.get_available_creators(platform)
-        return creators
+        return {
+            "success": True,
+            "creators": creators
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取创作者列表失败: {str(e)}")
 

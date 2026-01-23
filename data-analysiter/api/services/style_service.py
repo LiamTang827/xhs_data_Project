@@ -35,7 +35,7 @@ class StyleGenerationService:
         
         print("✅ StyleGenerationService 初始化完成")
     
-    def get_available_creators(self, platform: str = "xiaohongshu") -> List[Dict[str, str]]:
+    def get_available_creators(self, platform: str = "xiaohongshu") -> List[Dict[str, Any]]:
         """
         获取可用的创作者列表
         
@@ -43,22 +43,55 @@ class StyleGenerationService:
             platform: 平台类型
             
         Returns:
-            创作者列表 [{"id": "xxx", "name": "xxx"}, ...]
+            创作者列表 [{"name": "xxx", "user_id": "xxx", "topics": [...], "style": "xxx"}, ...]
         """
         try:
             profiles = self.profile_repo.get_all_profiles(platform=platform)
             
             creators = []
             for profile in profiles:
+                nickname = profile.get("nickname", "未知")
+                # 使用nickname作为user_id（因为user_id可能为空）
+                user_id = profile.get("user_id") or nickname
+                
+                # 从profile_data中提取topics和style
+                profile_data = profile.get("profile_data", {})
+                topics = []
+                style = "未知风格"
+                
+                if isinstance(profile_data, dict):
+                    # 尝试提取topics (检查content_topics, topics, 关键主题)
+                    if "content_topics" in profile_data:
+                        topics = profile_data["content_topics"]
+                    elif "topics" in profile_data:
+                        topics = profile_data["topics"]
+                    elif "关键主题" in profile_data:
+                        topics = profile_data["关键主题"]
+                    
+                    # 尝试提取style (检查content_style, style, 风格, 写作风格)
+                    if "content_style" in profile_data:
+                        style_list = profile_data["content_style"]
+                        style = ", ".join(style_list) if isinstance(style_list, list) else str(style_list)
+                    elif "style" in profile_data:
+                        style = profile_data["style"]
+                    elif "风格" in profile_data:
+                        style = profile_data["风格"]
+                    elif "写作风格" in profile_data:
+                        style = profile_data["写作风格"]
+                
                 creators.append({
-                    "id": profile.get("user_id", ""),
-                    "name": profile.get("nickname", "未知")
+                    "name": nickname,
+                    "user_id": user_id,
+                    "topics": topics if isinstance(topics, list) else [str(topics)],
+                    "style": str(style) if style else "未知风格"
                 })
             
             return creators
             
         except Exception as e:
             print(f"❌ 获取创作者列表失败: {e}")
+            import traceback
+            traceback.print_exc()
             return []
     
     def load_creator_profile(self, creator_name: str, platform: str = "xiaohongshu") -> Optional[Dict[str, Any]]:
