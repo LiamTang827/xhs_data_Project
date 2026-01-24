@@ -21,10 +21,10 @@ const BASE_DIR = WORKSPACE_ROOT.endsWith('xhs-analyser-frontend')
   ? path.join(WORKSPACE_ROOT, '..') 
   : WORKSPACE_ROOT
 
-const DATA_DIR = path.join(BASE_DIR, 'data-analysiter', 'data')
+const DATA_DIR = path.join(BASE_DIR, 'backend', 'data')
 const CREATORS_DATA_FILE = path.join(DATA_DIR, 'creators_data.json')
-const SNAPSHOTS_DIR = path.join(BASE_DIR, 'data-analysiter', 'data', 'snapshots')
-const ANALYSES_DIR = path.join(BASE_DIR, 'data-analysiter', 'data', 'analyses')
+const SNAPSHOTS_DIR = path.join(BASE_DIR, 'backend', 'data', 'snapshots')
+const ANALYSES_DIR = path.join(BASE_DIR, 'backend', 'data', 'analyses')
 const EMBED_SIM_THRESHOLD = parseFloat(process.env.EMBED_SIM_THRESHOLD || '0.6')
 
 let cachedClient: MongoClient | null = null

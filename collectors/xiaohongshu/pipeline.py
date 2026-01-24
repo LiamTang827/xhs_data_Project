@@ -11,15 +11,23 @@ from datetime import datetime
 from dotenv import load_dotenv
 from FlagEmbedding import FlagModel
 
-# 加载环境变量
-BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / '.env')
+# 添加backend到路径
+project_root = Path(__file__).resolve().parent.parent.parent
+backend_path = project_root / "backend"
+sys.path.insert(0, str(backend_path))
 
-# 添加项目根目录到路径
-sys.path.insert(0, str(BASE_DIR))
+# 加载环境变量
+env_file = project_root / '.env'
+if env_file.exists():
+    load_dotenv(env_file)
+else:
+    load_dotenv(backend_path / '.env')
 
 from database import UserSnapshotRepository, UserProfileRepository, UserEmbeddingRepository
-from processors.analyze import analyze_user_profile
+
+# 导入同目录的analyzer模块
+sys.path.insert(0, str(Path(__file__).parent))
+from analyzer import analyze_user_profile
 
 
 def process_user(user_id: str, embedding_model: FlagModel = None):
@@ -111,15 +119,19 @@ def process_user(user_id: str, embedding_model: FlagModel = None):
         embedding_doc = {
             'platform': 'xiaohongshu',
             'user_id': nickname,  # 使用nickname作为ID（因为user_id可能为空）
-            'embedding': profile_data['user_style_embedding'],
-            'model': 'text-embedding-3-small',
+            'user_style_embedding': profile_data['user_style_embedding'],  # 修改字段名
+            'model': 'BAAI/bge-small-zh-v1.5',  # 修改模型名
             'dimension': len(profile_data['user_style_embedding']),
             'created_at': datetime.now()
         }
         
         existing_embedding = embedding_repo.get_by_user_id(nickname)
         if existing_embedding:
-            embedding_repo.update_embedding(nickname, 'xiaohongshu', profile_data['user_style_embedding'])
+            # 修复update调用，使用正确的字段名
+            embedding_repo.update_one(
+                {"user_id": nickname, "platform": 'xiaohongshu'},
+                {"user_style_embedding": profile_data['user_style_embedding'], "updated_at": datetime.now()}
+            )
             print(f"✅ 已更新 user_embeddings")
         else:
             embedding_repo.create_embedding(embedding_doc)

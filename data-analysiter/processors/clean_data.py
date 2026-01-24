@@ -23,7 +23,11 @@ from pymongo import MongoClient
 from bson import ObjectId
 import re
 import pathlib
+from dotenv import load_dotenv
+from pathlib import Path
 
+# 加载 data-analysiter 目录的 .env 文件
+load_dotenv(Path(__file__).parent.parent / '.env')
 
 DEFAULT_URI = os.environ.get("MONGO_URI")
 if not DEFAULT_URI:
@@ -157,12 +161,12 @@ def clean_user(doc):
     if not doc:
         return None
     return {
-        "user_id": str(doc.get("user_id") or doc.get("_id")),
+        "user_id": str(doc.get("user_id") or doc.get("userid") or doc.get("_id") or ""),
         "nickname": doc.get("nickname") or doc.get("name") or None,
         "avatar": doc.get("avatar") if valid_url(doc.get("avatar")) else None,
         "desc": doc.get("desc") or doc.get("description") or None,
-        "fans": to_int(doc.get("fans"), 0),
-        "interaction": to_int(doc.get("interaction"), 0),
+        "fans": to_int(doc.get("fans") or doc.get("fan_count"), 0),
+        "interaction": to_int(doc.get("interaction") or doc.get("interact_count"), 0),
         "tag_list": normalize_tag_list_for_user(doc.get("tag_list")),
         "gender": (doc.get("gender") or "未知"),
         "ip_location": doc.get("ip_location") or doc.get("location") or None,
@@ -172,19 +176,27 @@ def clean_user(doc):
 def clean_note(doc):
     if not doc:
         return None
+    
+    # 提取user_id（从note中的user对象或直接字段）
+    user_id = ""
+    if "user" in doc and isinstance(doc["user"], dict):
+        user_id = str(doc["user"].get("userid") or doc["user"].get("user_id") or "")
+    else:
+        user_id = str(doc.get("user_id") or doc.get("userid") or doc.get("uid") or "")
+    
     return {
-        "note_id": str(doc.get("note_id") or doc.get("_id")),
-        "user_id": str(doc.get("user_id") or doc.get("uid") or None),
-        "title": doc.get("title") or None,
+        "note_id": str(doc.get("note_id") or doc.get("id") or doc.get("_id") or ""),
+        "user_id": user_id,
+        "title": doc.get("title") or doc.get("display_title") or None,
         "desc": doc.get("desc") or doc.get("description") or None,
-        "image_list": normalize_image_list(doc.get("image_list") or doc.get("images")),
+        "image_list": normalize_image_list(doc.get("image_list") or doc.get("images_list") or doc.get("images")),
         "video_url": normalize_video_url(doc.get("video_url") or doc.get("video") or doc.get("video_src")),
-        "liked_count": to_int(doc.get("liked_count") or doc.get("likes") or 0),
+        "liked_count": to_int(doc.get("liked_count") or doc.get("nice_count") or doc.get("likes") or 0),
         "collected_count": to_int(doc.get("collected_count") or doc.get("collects") or 0),
-        "comment_count": to_int(doc.get("comment_count") or doc.get("comments") or 0),
+        "comment_count": to_int(doc.get("comment_count") or doc.get("comments_count") or doc.get("comments") or 0),
         "share_count": to_int(doc.get("share_count") or doc.get("shares") or 0),
         "tag_list": normalize_tag_list_for_note(doc.get("tag_list") or doc.get("tags")),
-        "time": normalize_time(doc.get("time") or doc.get("created_at") or doc.get("create_time")),
+        "time": normalize_time(doc.get("time") or doc.get("create_time") or doc.get("created_at")),
         "note_url": doc.get("note_url") if valid_url(doc.get("note_url")) else None,
     }
 
@@ -192,6 +204,10 @@ def clean_note(doc):
 def process_from_mongo(uri, db_name, user_id=None, out_json=None, save_to_db=False, notes_limit=0):
     client = MongoClient(uri)
     db = client[db_name]
+    
+    # 优先从 user_snapshots 读取（新架构）
+    snapshots_coll = db["user_snapshots"]
+    # 兼容旧架构
     users_coll = db["xhs_users"]
     notes_coll = db["xhs_notes"]
 
@@ -199,28 +215,76 @@ def process_from_mongo(uri, db_name, user_id=None, out_json=None, save_to_db=Fal
     notes_out = []
 
     if user_id:
-        user_doc = users_coll.find_one({"user_id": user_id}) or users_coll.find_one({"_id": try_objectid(user_id)})
-        if not user_doc:
-            print(f"User {user_id} not found")
-            client.close()
-            return
-        cu = clean_user(user_doc)
-        users_out.append(cu)
-        q = {"user_id": user_id}
-        cursor = notes_coll.find(q).sort("create_time", -1)
-        if notes_limit and notes_limit > 0:
-            cursor = cursor.limit(notes_limit)
-        for n in cursor:
-            notes_out.append(clean_note(n))
+        # 先尝试从 user_snapshots 获取
+        snapshot_doc = snapshots_coll.find_one({"user_id": user_id})
+        
+        if snapshot_doc:
+            # 从 snapshot 提取 user 和 notes
+            notes = snapshot_doc.get('notes', [])
+            
+            # 从第一条 note 提取 user 信息（如果有）
+            user_info = None
+            if notes and 'user' in notes[0]:
+                user_info = notes[0]['user']
+            
+            # 构建 user 对象
+            if user_info:
+                cu = clean_user(user_info)
+            else:
+                # 如果没有user信息，从snapshot本身构建基础信息
+                cu = {
+                    "user_id": user_id,
+                    "nickname": None,
+                    "avatar": None,
+                    "desc": None,
+                    "fans": 0,
+                    "interaction": 0,
+                    "tag_list": None,
+                    "gender": "未知",
+                    "ip_location": None,
+                }
+            users_out.append(cu)
+            
+            # 清洗 notes
+            if notes_limit and notes_limit > 0:
+                notes = notes[:notes_limit]
+            for n in notes:
+                notes_out.append(clean_note(n))
+        else:
+            # 兼容旧架构：从 xhs_users 查找
+            user_doc = users_coll.find_one({"user_id": user_id}) or users_coll.find_one({"_id": try_objectid(user_id)})
+            if not user_doc:
+                print(f"User {user_id} not found in user_snapshots or xhs_users")
+                client.close()
+                return
+            cu = clean_user(user_doc)
+            users_out.append(cu)
+            q = {"user_id": user_id}
+            cursor = notes_coll.find(q).sort("create_time", -1)
+            if notes_limit and notes_limit > 0:
+                cursor = cursor.limit(notes_limit)
+            for n in cursor:
+                notes_out.append(clean_note(n))
     else:
-        cursor = users_coll.find({})
-        for u in cursor:
-            users_out.append(clean_user(u))
-        cursor2 = notes_coll.find({}).sort("create_time", -1)
-        if notes_limit and notes_limit > 0:
-            cursor2 = cursor2.limit(notes_limit)
-        for n in cursor2:
-            notes_out.append(clean_note(n))
+        # 处理所有用户：优先从 snapshots
+        snapshot_cursor = snapshots_coll.find({})
+        for snap in snapshot_cursor:
+            notes = snap.get('notes', [])
+            if notes and 'user' in notes[0]:
+                users_out.append(clean_user(notes[0]['user']))
+            for n in notes:
+                notes_out.append(clean_note(n))
+        
+        # 如果没有snapshots，兼容旧架构
+        if not users_out:
+            cursor = users_coll.find({})
+            for u in cursor:
+                users_out.append(clean_user(u))
+            cursor2 = notes_coll.find({}).sort("create_time", -1)
+            if notes_limit and notes_limit > 0:
+                cursor2 = cursor2.limit(notes_limit)
+            for n in cursor2:
+                notes_out.append(clean_note(n))
 
     if out_json:
         users_path, notes_path = out_json
@@ -243,8 +307,33 @@ def process_from_mongo(uri, db_name, user_id=None, out_json=None, save_to_db=Fal
             n_coll.replace_one({"note_id": n["note_id"]}, n, upsert=True)
         print(f"Upserted {upserted} users and {len(notes_out)} notes into {db_name}")
 
-    if not out_json and not save_to_db:
-        # print to stdout
+    if not out_json and not save_to_db and user_id:
+        # 自动保存为snapshot文件到 data/snapshots/ 目录
+        snapshot_dir = pathlib.Path(__file__).resolve().parent.parent / "data" / "snapshots"
+        snapshot_dir.mkdir(parents=True, exist_ok=True)
+        
+        user = users_out[0] if users_out else None
+        if user:
+            snapshot = {
+                "snapshot_time": datetime.utcnow().replace(microsecond=0).isoformat(),
+                "user": user,
+                "notes": notes_out
+            }
+            
+            # 生成文件名
+            nickname = user.get("nickname") or user.get("user_id") or "snapshot"
+            safe_name = re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]+", "_", nickname).strip("_")
+            date_str = datetime.utcnow().strftime("%Y-%m-%d")
+            file_name = f"{safe_name}_{date_str}.json"
+            out_path = snapshot_dir / file_name
+            
+            with open(out_path, "w", encoding="utf-8") as f:
+                json.dump(snapshot, f, ensure_ascii=False, indent=2)
+            
+            print(f"✅ 已保存snapshot: {out_path}")
+    
+    elif not out_json and not save_to_db:
+        # 没有指定user_id，只打印到stdout
         print("Users:")
         for u in users_out:
             print(json.dumps(u, ensure_ascii=False))
@@ -253,9 +342,8 @@ def process_from_mongo(uri, db_name, user_id=None, out_json=None, save_to_db=Fal
             print(json.dumps(n, ensure_ascii=False))
 
     # Return cleaned objects for snapshot generation or calling code
-    return {"user": (users_out[0] if users_out else None), "notes": notes_out}
-
     client.close()
+    return {"user": (users_out[0] if users_out else None), "notes": notes_out}
 
 
 def try_objectid(s):
@@ -277,13 +365,6 @@ def main():
     args = parser.parse_args()
     # If no args provided, run a demo for the test user_id and print results.
     # This makes running `python3 clean_data.py` show the expected demo output.
-
-
-
-    #在这里！！
-
-
-
 
 
     if not any([args.user_id, args.out_json, args.save_to_db, args.notes_limit]):

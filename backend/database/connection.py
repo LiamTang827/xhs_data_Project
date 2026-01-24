@@ -3,9 +3,22 @@ MongoDB Connection Management
 """
 
 import os
+from pathlib import Path
 from pymongo import MongoClient
 from pymongo.database import Database
 from typing import Optional
+from dotenv import load_dotenv
+
+# 加载环境变量（从项目根目录或backend目录）
+current_dir = Path(__file__).resolve().parent
+backend_dir = current_dir.parent
+project_root = backend_dir.parent
+
+# 尝试从项目根目录或backend目录加载.env
+for env_path in [project_root / '.env', backend_dir / '.env']:
+    if env_path.exists():
+        load_dotenv(env_path)
+        break
 
 # MongoDB连接配置
 MONGO_URI = os.getenv(

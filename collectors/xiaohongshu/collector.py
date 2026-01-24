@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-TikHub API数据采集脚本 - 获取小红书用户笔记并存入MongoDB
+小红书数据采集器 - 使用TikHub API获取用户笔记并存入MongoDB
 使用方法：修改 USER_ID 参数，然后运行此脚本
 """
 
 import sys
 from pathlib import Path
 
-# 添加 data-analysiter 到 Python 路径
-project_root = Path(__file__).resolve().parent.parent
-data_analysiter_path = project_root / "data-analysiter"
-sys.path.insert(0, str(data_analysiter_path))
+# 添加 backend 到 Python 路径
+project_root = Path(__file__).resolve().parent.parent.parent
+backend_path = project_root / "backend"
+sys.path.insert(0, str(backend_path))
 
 import requests
 import time
@@ -18,8 +18,13 @@ import random
 import os
 from dotenv import load_dotenv
 
-# 加载当前目录的 .env 文件
-load_dotenv(Path(__file__).parent / '.env')
+# 加载项目根目录的 .env 文件
+env_file = project_root / '.env'
+if env_file.exists():
+    load_dotenv(env_file)
+else:
+    # 尝试从当前目录加载
+    load_dotenv(Path(__file__).parent / '.env')
 
 from database import UserSnapshotRepository
 from datetime import datetime
@@ -178,7 +183,7 @@ def main():
     # 保存到MongoDB
     if data['user']:
         save_to_mongodb(USER_ID, data)
-        print(f"\n💡 下一步运行: python -m generators.creators")
+        print(f"\n💡 下一步运行: cd collectors/xiaohongshu && python3 pipeline.py --user_id {USER_ID}")
     else:
         print("\n❌ 未能获取用户信息")
 
