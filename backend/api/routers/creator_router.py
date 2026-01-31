@@ -23,7 +23,7 @@ async def get_creator_network(platform: str = "xiaohongshu") -> Dict[str, Any]:
         platform: 平台类型
         
     Returns:
-        网络数据 {creators: [...], edges: [...]}
+        网络数据 {creators: [...], creatorEdges: [...], trackClusters: {}, trendingKeywordGroups: []}
     """
     try:
         network_repo = CreatorNetworkRepository()
@@ -33,10 +33,20 @@ async def get_creator_network(platform: str = "xiaohongshu") -> Dict[str, Any]:
             # 如果数据库中没有，返回空网络
             return {
                 "creators": [],
-                "edges": []
+                "creatorEdges": [],
+                "trackClusters": {},
+                "trendingKeywordGroups": []
             }
         
-        return network.get("network_data", {"creators": [], "edges": []})
+        # 获取network_data，确保字段名称匹配前端期望
+        network_data = network.get("network_data", {})
+        
+        return {
+            "creators": network_data.get("creators", []),
+            "creatorEdges": network_data.get("creatorEdges", network_data.get("edges", [])),
+            "trackClusters": network_data.get("trackClusters", {}),
+            "trendingKeywordGroups": network_data.get("trendingKeywordGroups", [])
+        }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取网络数据失败: {str(e)}")
