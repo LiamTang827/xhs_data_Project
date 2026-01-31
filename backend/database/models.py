@@ -146,3 +146,59 @@ class PlatformConfig(BaseModel):
     enabled: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
+
+
+# =====================================================
+# 7. User Persona Models（NEW）
+# =====================================================
+
+class PersonaTag(BaseModel):
+    """用户画像标签"""
+    name: str = Field(description="标签名称")
+    weight: float = Field(default=1.0, description="标签权重 (0-1)")
+    category: str = Field(default="", description="标签分类：兴趣/风格/价值观")
+
+
+class ActivityPattern(BaseModel):
+    """活跃时间段分析"""
+    peak_hours: List[int] = Field(default_factory=list, description="活跃小时（0-23）")
+    active_weekdays: List[int] = Field(default_factory=list, description="活跃星期（1-7）")
+    posting_frequency: str = Field(default="unknown", description="发布频率：高/中/低")
+
+
+class AudienceProfile(BaseModel):
+    """受众画像"""
+    age_range: str = Field(default="", description="年龄段：18-24, 25-34等")
+    gender_ratio: Dict[str, float] = Field(default_factory=dict, description="性别比例：{male: 0.3, female: 0.7}")
+    interests: List[str] = Field(default_factory=list, description="受众兴趣标签")
+
+
+class UserPersona(BaseModel):
+    """用户画像模型（User Persona）"""
+    user_id: str = Field(description="用户ID")
+    platform: PlatformType = Field(default=PlatformType.XIAOHONGSHU)
+    nickname: str = Field(default="")
+    
+    # 核心画像数据
+    persona_tags: List[PersonaTag] = Field(default_factory=list, description="用户画像标签")
+    content_themes: List[str] = Field(default_factory=list, description="内容主题列表")
+    style_keywords: List[str] = Field(default_factory=list, description="风格关键词")
+    value_proposition: str = Field(default="", description="价值主张（一句话概括）")
+    
+    # 行为分析
+    activity_pattern: ActivityPattern = Field(default_factory=ActivityPattern, description="活跃时间段")
+    content_quality_score: float = Field(default=0.0, description="内容质量评分 (0-100)")
+    engagement_rate: float = Field(default=0.0, description="互动率")
+    
+    # 受众分析
+    audience_profile: AudienceProfile = Field(default_factory=AudienceProfile, description="受众画像")
+    
+    # AI生成的洞察
+    ai_summary: str = Field(default="", description="AI生成的用户画像总结")
+    recommendations: List[str] = Field(default_factory=list, description="优化建议")
+    
+    # 元数据
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+    version: str = Field(default="1.0.0", description="画像版本号")
+

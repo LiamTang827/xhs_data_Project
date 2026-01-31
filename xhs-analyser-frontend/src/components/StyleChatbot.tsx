@@ -7,15 +7,13 @@ interface Creator {
   topics: string[];
   style: string;
   user_id: string;
+  platform: string;
 }
 
 interface GenerateResult {
   success: boolean;
-  creator_name: string;
-  user_input: string;
-  generated_content: string;
-  profile_topics: string[];
-  note_samples_count: number;
+  content: string;
+  error?: string;
 }
 
 export function StyleChatbot() {
@@ -65,6 +63,7 @@ export function StyleChatbot() {
 
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      const selectedCreatorData = creators.find(c => c.name === selectedCreator);
       const response = await fetch(`${API_URL}/api/style/generate`, {
         method: 'POST',
         headers: {
@@ -73,15 +72,16 @@ export function StyleChatbot() {
         body: JSON.stringify({
           creator_name: selectedCreator,
           user_input: userInput,
+          platform: selectedCreatorData?.platform || 'xiaohongshu',
         }),
       });
 
       const data: GenerateResult = await response.json();
 
-      if (data.success) {
-        setGeneratedContent(data.generated_content);
+      if (data.success && data.content) {
+        setGeneratedContent(data.content);
       } else {
-        setError("生成失败");
+        setError(data.error || "生成失败");
       }
     } catch (err) {
       console.error("生成内容失败:", err);

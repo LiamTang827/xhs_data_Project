@@ -8,6 +8,9 @@
 .venv/
 venv/
 env/
+ENV/
+env.bak/
+venv.bak/
 
 # -------------------
 # 2. Python 相关 (data-analysiter & MediaCrawler)
@@ -15,6 +18,9 @@ env/
 # Python 编译缓存 (这也是垃圾文件，不用提交)
 __pycache__/
 *.py[cod]
+*$py.class
+*.so
+.Python
 
 # -------------------
 # 3. 前端构建产物 (xhs-analyser-frontend)
@@ -26,12 +32,85 @@ build/
 dist/
 
 # -------------------
-# 4. 系统与配置文件
+# 4. 敏感信息与密钥 (最重要！防止泄漏)
+# -------------------
+# 环境变量文件 (包含数据库密码、API密钥等敏感信息)
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.test
+
+# SSH 密钥和证书
+*.pem
+*.key
+*.crt
+*.cert
+id_rsa
+id_dsa
+*.p12
+*.pfx
+
+# 配置文件中可能包含密钥的备份
+*.bak
+*.backup
+config.local.*
+
+# -------------------
+# 5. 日志文件
+# -------------------
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# -------------------
+# 6. 系统与IDE文件
 # -------------------
 # Mac 系统产生的垃圾文件
 .DS_Store
+.AppleDouble
+.LSOverride
 
-# 环境变量 (保护隐私，不要提交密码和 Key！)
-.env
-.env.local
-*.log
+# Windows 系统文件
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDE 配置文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# -------------------
+# 7. 临时文件与测试数据
+# -------------------
+tmp/
+temp/
+*.tmp
+test-results/
+coverage/
+.nyc_output/
+
+# -------------------
+# 8. 数据库文件（本地开发）
+# -------------------
+*.db
+*.sqlite
+*.sqlite3
+
+# -------------------
+# 9. 依赖锁文件（可选，根据团队协作需求）
+# -------------------
+# 如果你们团队使用 pnpm，可以提交 pnpm-lock.yaml
+# 如果用 npm，提交 package-lock.json
+# 这里保持默认，不忽略锁文件

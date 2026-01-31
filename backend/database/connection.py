@@ -2,32 +2,17 @@
 MongoDB Connection Management
 """
 
-import os
 from pathlib import Path
 from pymongo import MongoClient
 from pymongo.database import Database
 from typing import Optional
-from dotenv import load_dotenv
 
-# 加载环境变量（从项目根目录或backend目录）
-current_dir = Path(__file__).resolve().parent
-backend_dir = current_dir.parent
-project_root = backend_dir.parent
+# 使用集中化配置管理
+from core.config import settings
 
-# 尝试从项目根目录或backend目录加载.env
-for env_path in [project_root / '.env', backend_dir / '.env']:
-    if env_path.exists():
-        load_dotenv(env_path)
-        break
-
-# MongoDB连接配置
-MONGO_URI = os.getenv(
-    "MONGO_URI"
-)
-if not MONGO_URI:
-    raise ValueError("MONGO_URI environment variable is required. Please copy .env.example to .env and set your MongoDB URI.")
-
-DATABASE_NAME = os.getenv("DATABASE_NAME", "tikhub_xhs")
+# MongoDB连接配置（从settings获取）
+MONGO_URI = settings.MONGO_URI
+DATABASE_NAME = settings.DATABASE_NAME
 
 _client: Optional[MongoClient] = None
 _database: Optional[Database] = None
