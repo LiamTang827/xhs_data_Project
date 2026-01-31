@@ -61,25 +61,48 @@ async def list_creators(platform: str = None):
     Returns:
         创作者列表，包含success标志
     """
+    import traceback
     try:
-        service = get_style_service()
+        print(f"📡 [/api/style/creators] 收到请求, platform={platform}")
+        
+        # 尝试获取服务实例
+        try:
+            service = get_style_service()
+            print("✅ StyleGenerationService 实例获取成功")
+        except Exception as service_error:
+            error_msg = f"服务初始化失败: {str(service_error)}"
+            print(f"❌ {error_msg}")
+            print(traceback.format_exc())
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "error": error_msg,
+                    "type": "service_initialization_error",
+                    "traceback": traceback.format_exc()
+                }
+            )
         
         # 如果未指定platform，返回所有平台的创作者
         if platform is None:
             all_creators = []
             for plat in ["xiaohongshu", "instagram"]:
+                print(f"🔍 正在查询 {plat} 平台的创作者...")
                 creators = service.get_available_creators(plat)
+                print(f"✅ {plat} 平台找到 {len(creators)} 个创作者")
                 # 为每个创作者添加platform字段
                 for creator in creators:
                     creator["platform"] = plat
                 all_creators.extend(creators)
             
+            print(f"📊 总共返回 {len(all_creators)} 个创作者")
             return {
                 "success": True,
                 "creators": all_creators
             }
         else:
+            print(f"🔍 正在查询 {platform} 平台的创作者...")
             creators = service.get_available_creators(platform)
+            print(f"✅ {platform} 平台找到 {len(creators)} 个创作者")
             # 添加platform字段
             for creator in creators:
                 creator["platform"] = platform
@@ -88,11 +111,21 @@ async def list_creators(platform: str = None):
                 "success": True,
                 "creators": creators
             }
+    except HTTPException:
+        # 重新抛出HTTPException
+        raise
     except Exception as e:
-        import traceback
-        error_detail = f"获取创作者列表失败: {str(e)}\n堆栈: {traceback.format_exc()}"
+        error_detail = f"获取创作者列表失败: {str(e)}"
         print(f"❌ {error_detail}")
-        raise HTTPException(status_code=500, detail=f"获取创作者列表失败: {str(e)}")
+        print(f"堆栈信息:\n{traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": error_detail,
+                "type": "unknown_error",
+                "traceback": traceback.format_exc()
+            }
+        )
 
 
 @router.post("/generate", response_model=GenerateResponse)

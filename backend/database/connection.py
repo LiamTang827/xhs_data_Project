@@ -28,9 +28,20 @@ def get_database() -> Database:
     global _client, _database
     
     if _database is None:
-        _client = MongoClient(MONGO_URI)
-        _database = _client[DATABASE_NAME]
-        print(f"✅ MongoDB连接成功: {DATABASE_NAME}")
+        try:
+            print(f"🔄 正在连接 MongoDB...")
+            print(f"📍 数据库名称: {DATABASE_NAME}")
+            print(f"🔗 URI前缀: {MONGO_URI[:20]}...")
+            
+            _client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+            _database = _client[DATABASE_NAME]
+            
+            # 测试连接
+            _client.admin.command('ping')
+            print(f"✅ MongoDB连接成功: {DATABASE_NAME}")
+        except Exception as e:
+            print(f"❌ MongoDB连接失败: {str(e)}")
+            raise RuntimeError(f"无法连接到MongoDB: {str(e)}") from e
     
     return _database
 

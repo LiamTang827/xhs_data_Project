@@ -1,95 +1,110 @@
-# Railway 部署问题诊断和修复指南
+# Railway 部署配置指南
 
-## 🔍 问题分析
+## ✅ 问题已修复
 
-根据你的截图，前端显示：
-- `creators` 返回 **500 Internal Server Error**
-- `creators` 也返回 **404 Not Found**
+**修复内容：**
+1. ✅ 添加了 Next.js API路由桥接前后端（`/api/creators` 和 `/api/style/creators`）
+2. ✅ 修复了后端返回数据格式（`edges` → `creatorEdges`）
+3. ✅ 创建了前端环境变量模板（`.env.production`）
 
-本地测试证明代码完全正常，问题在于Railway部署环境。
+## 🚀 部署步骤
 
-## ✅ 解决方案
+### 1️⃣ 后端部署（Railway）
 
-### 1️⃣ 检查Railway环境变量
+1. **环境变量配置**
 
-前往 Railway Dashboard → 你的项目 → Variables，确保设置了：
+进入 Railway Dashboard → 你的后端项目 → Variables：
 
-```
-MONGO_URI=mongodb+srv://xhs_user:你的新密码@xhs-cluster.omeyngi.mongodb.net/?retryWrites=true&w=majority&appName=xhs-Cluster
+```bash
+MONGO_URI=你的MongoDB连接字符串
 DATABASE_NAME=tikhub_xhs
-DEEPSEEK_API_KEY=你的新API密钥
+DEEPSEEK_API_KEY=你的DeepSeek API密钥
 PORT=8000
 ```
 
-⚠️ **重要**: 由于密钥泄露，必须使用新的密钥！
+2. **验证部署**
 
-### 2️⃣ 检查Railway服务URL
+等待部署完成后，访问：
+```
+https://你的后端域名.up.railway.app/api/health
+https://你的后端域名.up.railway.app/api/creators/network
+https://你的后端域名.up.railway.app/api/style/creators
+```
 
-确认你的Railway后端服务URL（应该类似 `https://your-app-xxx.up.railway.app`）
+应该能看到JSON数据返回。
 
-### 3️⃣ 配置前端环境变量
+### 2️⃣ 前端部署
 
-在前端项目根目录创建 `.env.local`：
+1. **配置环境变量**
+
+在前端项目根目录创建 `.env.production`（或在Vercel/Railway配置）：
 
 ```bash
-# Railway 后端URL（替换为你的实际URL）
-NEXT_PUBLIC_API_URL=https://your-backend-xxx.up.railway.app
+NEXT_PUBLIC_API_URL=https://你的后端域名.up.railway.app
 ```
 
-然后重新部署前端（如果前端也在Railway上）。
+⚠️ **注意**：替换为你的实际Railway后端域名！
 
-### 4️⃣ 验证Railway后端部署
-
-打开浏览器访问以下URL（替换为你的实际域名）：
-
-```
-https://your-backend-xxx.up.railway.app/api/health
-https://your-backend-xxx.up.railway.app/api/style/creators
-https://your-backend-xxx.up.railway.app/docs
-```
-
-### 5️⃣ 如果数据库是空的
-
-如果Railway上的MongoDB是空的（没有创作者数据），需要运行数据初始化：
-
-进入Railway Dashboard → 你的项目 → 打开Shell，执行：
+2. **重新部署前端**
 
 ```bash
-python init_railway_data.py
+cd xhs-analyser-frontend
+# 如果用Vercel
+vercel --prod
+
+# 如果用Railway
+git push  # Railway会自动检测并部署
 ```
 
-或者在本地运行并连接到Railway的MongoDB：
+## 📊 数据检查
 
+你的数据库已有数据：
+- ✅ user_profiles: 10条
+- ✅ user_snapshots: 9条  
+- ✅ user_embeddings: 10条
+- ✅ creator_networks: 1条（包含8个创作者和9条边）
+- ✅ style_prompts: 1条
+
+**创作者网络数据正常，包含：**
+- 8个创作者节点
+- 9条关系边
+- 完整的轨道分类和关键词组
+
+## 🎯 验证清单
+
+部署完成后验证：
+
+- [ ] 后端 `/api/health` 返回 `{"status": "ok"}`
+- [ ] 后端 `/api/creators/network` 返回创作者网络数据
+- [ ] 后端 `/api/style/creators` 返回10个创作者列表
+- [ ] 前端环境变量 `NEXT_PUBLIC_API_URL` 已配置
+- [ ] 前端页面能显示创作者关系网络图
+- [ ] 前端"选择模仿创作者"下拉框有选项
+
+## 🔧 本地测试（已验证）
+
+本地测试全部通过：
 ```bash
-cd backend
-MONGO_URI="你的Railway MongoDB URI" python ../init_railway_data.py
+✅ /api/creators/network - 返回8个创作者和9条边
+✅ /api/style/creators - 返回10个创作者
+✅ 数据格式正确（creatorEdges字段匹配）
 ```
 
-## 🐛 调试步骤
+## 📝 技术说明
 
-### 查看Railway日志
+**架构变化：**
+```
+前端 Next.js                后端 FastAPI
+    ↓                           ↓
+/api/creators        →    /api/creators/network
+    ↓                           ↓
+获取creatorEdges      ←    返回creatorEdges数据
+```
 
-1. Railway Dashboard → 你的项目 → Deployments → 查看最新部署日志
-2. 检查是否有启动错误或数据库连接错误
-
-### 测试debug端点
-
-访问：`https://your-backend-xxx.up.railway.app/api/style/debug/db`
-
-这会返回数据库连接状态和集合统计信息。
-
-## 📋 快速检查清单
-
-- [ ] Railway环境变量已设置（MONGO_URI, DEEPSEEK_API_KEY, DATABASE_NAME）
-- [ ] Railway部署成功（查看Deployments页面状态）
-- [ ] 后端health端点可访问
-- [ ] MongoDB有数据（至少user_profiles有记录）
-- [ ] 前端环境变量指向正确的Railway后端URL
-- [ ] 前端已重新构建和部署
-
-## 🔗 相关文件
-
-- 后端Dockerfile: `backend/Dockerfile` ✅ 已修复PYTHONPATH
-- 数据初始化: `init_railway_data.py` ✅ 已创建
-- API路由: `backend/api/routers/style_router.py` ✅ 正常
-- 前端API调用: `xhs-analyser-frontend/src/components/StyleChatbot.tsx`
+**数据流：**
+1. 前端调用 Next.js API路由 `/api/creators`
+2. Next.js服务端通过 `NEXT_PUBLIC_API_URL` 调用Railway后端
+3. 后端从MongoDB读取 `creator_networks` 集合
+4. 返回格式化数据：`{creators, creatorEdges, trackClusters, trendingKeywordGroups}`
+5. Next.js API路由转发数据给前端
+6. 前端渲染网络图和创作者列表
