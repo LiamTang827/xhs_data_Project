@@ -3,14 +3,9 @@ FastAPI服务 - 提供数据分析API（三层架构版本）
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pathlib import Path
-import sys
-
-# 添加父目录到路径以支持相对导入
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # 导入新的路由（使用Service层和Database层）
-from api.routers import style_router, creator_router
+from api.routers import style_router, creator_router, persona_router
 
 app = FastAPI(
     title="XHS Data Analysis API",
@@ -30,6 +25,7 @@ app.add_middleware(
 # 注册路由（新架构）
 app.include_router(style_router, tags=["风格生成"])
 app.include_router(creator_router, tags=["创作者数据"])
+app.include_router(persona_router, prefix="/api", tags=["用户画像"])
 
 
 @app.get("/")
@@ -48,6 +44,9 @@ async def root():
             "creator_detail": "/api/creators/{creator_name}",
             "style_generate": "/api/style/generate",
             "style_creators": "/api/style/creators",
+            "persona_analyze": "/api/persona/analyze",
+            "persona_get": "/api/persona/{user_id}",
+            "persona_list": "/api/persona",
             "health": "/api/health"
         },
         "docs": {
