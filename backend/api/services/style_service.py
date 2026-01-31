@@ -56,8 +56,15 @@ class StyleGenerationService:
             创作者列表 [{"name": "xxx", "user_id": "xxx", "topics": [...], "style": "xxx"}, ...]
         """
         try:
+            print(f"🔍 [StyleService] 查询平台: {platform}")
             profiles = self.profile_repo.get_all_profiles(platform=platform)
             
+            # 检查是否有数据
+            if not profiles:
+                print(f"⚠️  [StyleService] {platform} 平台没有找到任何创作者档案")
+                return []
+            
+            print(f"📦 [StyleService] 找到 {len(profiles)} 个档案")
             creators = []
             for profile in profiles:
                 nickname = profile.get("nickname", "未知")
@@ -96,10 +103,11 @@ class StyleGenerationService:
                     "style": str(style) if style else "未知风格"
                 })
             
+            print(f"✅ [StyleService] 成功转换 {len(creators)} 个创作者数据")
             return creators
             
         except Exception as e:
-            print(f"❌ 获取创作者列表失败: {e}")
+            print(f"❌ [StyleService] 获取创作者列表失败: {e}")
             import traceback
             traceback.print_exc()
             # 确保返回空列表而不是 None
