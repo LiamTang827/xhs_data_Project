@@ -3,10 +3,10 @@ Style Generation Service
 风格生成业务逻辑层 - 从数据库读取数据
 """
 
-import os
 from typing import Dict, List, Any, Optional
-from openai import OpenAI
 
+from core.config import settings
+from core.llm_gateway import get_llm_gateway
 from database import (
     UserProfileRepository,
     UserSnapshotRepository,
@@ -23,17 +23,10 @@ class StyleGenerationService:
         self.snapshot_repo = UserSnapshotRepository()
         self.prompt_repo = StylePromptRepository()
         
-        # 初始化DeepSeek API客户端
-        api_key = os.getenv("DEEPSEEK_API_KEY", "")
-        if not api_key:
-            raise ValueError("❌ DEEPSEEK_API_KEY环境变量未设置")
+        # 使用LLM Gateway替代直接调用OpenAI
+        self.llm = get_llm_gateway()
         
-        self.client = OpenAI(
-            api_key=api_key,
-            base_url="https://api.deepseek.com"
-        )
-        
-        print("✅ StyleGenerationService 初始化完成")
+        print("✅ StyleGenerationService 初始化完成（已启用LLM Gateway）")
     
     def get_available_creators(self, platform: str = "xiaohongshu") -> List[Dict[str, Any]]:
         """
@@ -92,6 +85,7 @@ class StyleGenerationService:
             print(f"❌ 获取创作者列表失败: {e}")
             import traceback
             traceback.print_exc()
+            # 确保返回空列表而不是 None
             return []
     
     def load_creator_profile(self, creator_name: str, platform: str = "xiaohongshu") -> Optional[Dict[str, Any]]:
@@ -249,20 +243,17 @@ class StyleGenerationService:
                 creator_name
             )
             
-            # 4. 调用DeepSeek API
-            print(f"🤖 调用DeepSeek API生成内容...")
-            response = self.client.chat.completions.create(
+            # 4. 使用LLM Gateway调用API（自动缓存+限流）
+            print(f"🤖 调用LLM Gateway生成内容（启用缓存）...")
+            import asyncio
+            generated_content = asyncio.run(self.llm.chat(
+                prompt=prompt,
                 model="deepseek-chat",
-                messages=[
-                    {"role": "system", "content": "你是一位专业的内容创作助手。"},
-                    {"role": "user", "content": prompt}
-                ],
+                max_tokens=2000,
                 temperature=0.7,
-                max_tokens=2000
-            )
+                use_cache=True  # 启用缓存
+            ))
             
-            # 5. 提取生成内容
-            generated_content = response.choices[0].message.content
             print(f"✅ 内容生成成功")
             
             return {

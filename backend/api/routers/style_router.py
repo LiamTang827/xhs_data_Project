@@ -89,6 +89,9 @@ async def list_creators(platform: str = None):
                 "creators": creators
             }
     except Exception as e:
+        import traceback
+        error_detail = f"获取创作者列表失败: {str(e)}\n堆栈: {traceback.format_exc()}"
+        print(f"❌ {error_detail}")
         raise HTTPException(status_code=500, detail=f"获取创作者列表失败: {str(e)}")
 
 
@@ -123,3 +126,33 @@ async def generate_style_content(request: GenerateRequest):
 async def health_check():
     """健康检查"""
     return {"status": "ok", "service": "style_generation"}
+
+
+@router.get("/debug/db")
+async def debug_database():
+    """调试数据库连接 - 仅用于排查问题"""
+    try:
+        from database.connection import get_database
+        db = get_database()
+        
+        # 测试连接
+        collections = db.list_collection_names()
+        user_profiles_count = db.user_profiles.count_documents({})
+        
+        # 获取一个示例
+        sample = db.user_profiles.find_one() if user_profiles_count > 0 else None
+        
+        return {
+            "status": "connected",
+            "database_name": db.name,
+            "collections": collections,
+            "user_profiles_count": user_profiles_count,
+            "sample_nickname": sample.get("nickname") if sample else None
+        }
+    except Exception as e:
+        import traceback
+        return {
+            "status": "error",
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }
