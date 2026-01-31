@@ -1,52 +1,22 @@
-# 核心魔法：强制去下载 CPU 版本的 PyTorch (体积只有原来的 1/10)
---extra-index-url https://download.pytorch.org/whl/cpu
+# Web框架（FastAPI核心）
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
 
-# AI 核心组件 (必须配合上面的 CPU URL 使用)
-torch
-torchvision
-torchaudio
-accelerate
-transformers
-sentence-transformers
-openai-whisper
-peft
-FlagEmbedding
+# AI/DeepSeek API
+openai==1.10.0
 
-# 数据科学与计算
-numpy
-pandas
-scikit-learn
-scipy
-# numba 和 llvmlite 编译很慢，如果你的代码没强制用到 JIT 加速，建议删掉下面两行
-numba
-llvmlite
-
-# Web 框架 (你同时用了两个，建议以后精简，这里先保留以防报错)
-fastapi
-uvicorn
-python-multipart
-Flask
-flask-cors
-starlette
-werkzeug
-
-# 网络请求与爬虫
-requests
-httpx
-aiohttp
-beautifulsoup4
-lxml
-huggingface-hub
-openai
+# 本地Embeddings模型（⚠️ 不使用DeepSeek API）
+sentence-transformers>=2.2.2
+torch>=2.0.0
 
 # 数据库
-pymongo
+pymongo==4.6.1
+dnspython==2.5.0
 
-# 其他工具
-python-dateutil
-pytz
-PyYAML
-tqdm
-pillow
-click
-python-dotenv
+# 环境变量与配置管理
+python-dotenv==1.0.0
+pydantic-settings==2.1.0
+
+# 工具库
+requests==2.31.0
