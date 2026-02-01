@@ -18,32 +18,15 @@ class StyleGenerationService:
     """风格生成服务"""
     
     def __init__(self):
-        import traceback
-        try:
-            print("🔄 开始初始化 StyleGenerationService...")
-            
-            # 初始化数据仓库
-            print("📦 初始化数据仓库...")
-            self.profile_repo = UserProfileRepository()
-            print("✅ UserProfileRepository 初始化成功")
-            
-            self.snapshot_repo = UserSnapshotRepository()
-            print("✅ UserSnapshotRepository 初始化成功")
-            
-            self.prompt_repo = StylePromptRepository()
-            print("✅ StylePromptRepository 初始化成功")
-            
-            # 使用LLM Gateway替代直接调用OpenAI
-            print("🤖 初始化 LLM Gateway...")
-            self.llm = get_llm_gateway()
-            print("✅ LLM Gateway 初始化成功")
-            
-            print("✅ StyleGenerationService 初始化完成（已启用LLM Gateway）")
-        except Exception as e:
-            error_msg = f"StyleGenerationService 初始化失败: {str(e)}"
-            print(f"❌ {error_msg}")
-            print(traceback.format_exc())
-            raise RuntimeError(error_msg) from e
+        # 初始化数据仓库
+        self.profile_repo = UserProfileRepository()
+        self.snapshot_repo = UserSnapshotRepository()
+        self.prompt_repo = StylePromptRepository()
+        
+        # 使用LLM Gateway替代直接调用OpenAI
+        self.llm = get_llm_gateway()
+        
+        print("✅ StyleGenerationService 初始化完成（已启用LLM Gateway）")
     
     def get_available_creators(self, platform: str = "xiaohongshu") -> List[Dict[str, Any]]:
         """
@@ -56,15 +39,8 @@ class StyleGenerationService:
             创作者列表 [{"name": "xxx", "user_id": "xxx", "topics": [...], "style": "xxx"}, ...]
         """
         try:
-            print(f"🔍 [StyleService] 查询平台: {platform}")
             profiles = self.profile_repo.get_all_profiles(platform=platform)
             
-            # 检查是否有数据
-            if not profiles:
-                print(f"⚠️  [StyleService] {platform} 平台没有找到任何创作者档案")
-                return []
-            
-            print(f"📦 [StyleService] 找到 {len(profiles)} 个档案")
             creators = []
             for profile in profiles:
                 nickname = profile.get("nickname", "未知")
@@ -103,11 +79,10 @@ class StyleGenerationService:
                     "style": str(style) if style else "未知风格"
                 })
             
-            print(f"✅ [StyleService] 成功转换 {len(creators)} 个创作者数据")
             return creators
             
         except Exception as e:
-            print(f"❌ [StyleService] 获取创作者列表失败: {e}")
+            print(f"❌ 获取创作者列表失败: {e}")
             import traceback
             traceback.print_exc()
             # 确保返回空列表而不是 None

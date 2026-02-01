@@ -92,19 +92,8 @@ class UserProfileRepository(BaseRepository):
         Returns:
             用户档案列表
         """
-        try:
-            query = {"platform": platform} if platform else {}
-            print(f"🔍 [Repository] 查询条件: {query}")
-            
-            results = self.find_many(query)
-            print(f"📊 [Repository] 查询结果数量: {len(results) if results else 0}")
-            
-            return results if results is not None else []
-        except Exception as e:
-            print(f"❌ [Repository] 查询失败: {e}")
-            import traceback
-            traceback.print_exc()
-            return []
+        query = {"platform": platform} if platform else {}
+        return self.find_many(query)
     
     def create_profile(self, profile_data: Dict[str, Any]) -> str:
         """
