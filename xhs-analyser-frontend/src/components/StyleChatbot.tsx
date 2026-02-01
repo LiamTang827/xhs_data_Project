@@ -28,12 +28,24 @@ export function StyleChatbot() {
   useEffect(() => {
     const loadCreators = async () => {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-        const response = await fetch(`${API_URL}/api/style/creators`);
-        const data = await response.json();
+        // 使用环境变量，默认localhost:8000（与后端端口一致）
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        console.log('🔍 [StyleChatbot] Loading creators from:', API_URL);
         
-        if (data.success) {
+        const response = await fetch(`${API_URL}/api/style/creators`);
+        console.log('📡 [StyleChatbot] Response status:', response.status);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('📦 [StyleChatbot] Received data:', data);
+        
+        if (data.success && data.creators && data.creators.length > 0) {
           setCreators(data.creators);
+          console.log(`✅ [StyleChatbot] Loaded ${data.creators.length} creators`);
+          
           // 默认选择硅谷樱花小姐姐
           const defaultCreator = data.creators.find((c: Creator) => 
             c.name === "硅谷樱花小姐姐🌸"
@@ -41,10 +53,13 @@ export function StyleChatbot() {
           if (defaultCreator) {
             setSelectedCreator(defaultCreator.name);
           }
+        } else {
+          console.warn('⚠️  [StyleChatbot] No creators in response');
+          setError("后端返回了空的创作者列表");
         }
       } catch (err) {
-        console.error("加载创作者列表失败:", err);
-        setError("无法加载创作者列表");
+        console.error("❌ [StyleChatbot] 加载创作者列表失败:", err);
+        setError(`无法加载创作者列表: ${err instanceof Error ? err.message : String(err)}`);
       }
     };
 
@@ -62,7 +77,8 @@ export function StyleChatbot() {
     setGeneratedContent("");
 
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+      // 使用环境变量，默认localhost:8000（与后端端口一致）
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
       const selectedCreatorData = creators.find(c => c.name === selectedCreator);
       const response = await fetch(`${API_URL}/api/style/generate`, {
         method: 'POST',
