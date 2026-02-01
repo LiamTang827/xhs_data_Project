@@ -200,7 +200,7 @@ class StyleGenerationService:
             print(f"❌ 构建提示词失败: {e}")
             return self._get_fallback_prompt(creator_name, user_topic)
     
-    def generate_content(
+    async def generate_content(
         self,
         creator_name: str,
         user_topic: str,
@@ -245,14 +245,13 @@ class StyleGenerationService:
             
             # 4. 使用LLM Gateway调用API（自动缓存+限流）
             print(f"🤖 调用LLM Gateway生成内容（启用缓存）...")
-            import asyncio
-            generated_content = asyncio.run(self.llm.chat(
+            generated_content = await self.llm.chat(
                 prompt=prompt,
                 model="deepseek-chat",
                 max_tokens=2000,
                 temperature=0.7,
                 use_cache=True  # 启用缓存
-            ))
+            )
             
             print(f"✅ 内容生成成功")
             

@@ -108,7 +108,7 @@ async def generate_style_content(request: GenerateRequest):
     """
     try:
         service = get_style_service()
-        result = service.generate_content(
+        result = await service.generate_content(
             creator_name=request.creator_name,
             user_topic=request.user_input,  # 使用user_input字段
             platform=request.platform
