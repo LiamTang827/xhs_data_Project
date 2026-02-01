@@ -19,16 +19,25 @@ class LLMGateway:
     """LLM网关 - 缓存 + 压缩 + 限流"""
     
     def __init__(self):
-        self.client = OpenAI(
-            api_key=settings.DEEPSEEK_API_KEY,
-            base_url=settings.DEEPSEEK_BASE_URL
-        )
-        self.rate_limiter = TokenBucketRateLimiter(
-            capacity=100,   # 桶容量
-            refill_rate=10  # 每秒补充10个token
-        )
-        self.db = get_database()
-        print("✅ LLM Gateway 初始化完成（缓存 + 限流已启用）")
+        try:
+            # 简化初始化，避免版本兼容问题
+            self.client = OpenAI(
+                api_key=settings.DEEPSEEK_API_KEY,
+                base_url=settings.DEEPSEEK_BASE_URL,
+                timeout=30.0  # 添加超时设置
+            )
+            self.rate_limiter = TokenBucketRateLimiter(
+                capacity=100,   # 桶容量
+                refill_rate=10  # 每秒补充10个token
+            )
+            self.db = get_database()
+            print("✅ LLM Gateway 初始化完成（缓存 + 限流已启用）")
+        except Exception as e:
+            print(f"⚠️  LLM Gateway 初始化警告: {e}")
+            # 即使初始化失败也创建客户端（用于非AI功能）
+            self.client = None
+            self.rate_limiter = None
+            self.db = get_database()
     
     async def chat(
         self,
