@@ -15,6 +15,7 @@ export interface CreatorNode {
   ipLocation?: string;
   desc?: string;
   redId?: string;
+  topics?: string[];
 }
 
 export type CreatorEdgeSignal = "keyword" | "audience" | "style" | "campaign";

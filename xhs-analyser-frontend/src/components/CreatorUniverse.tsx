@@ -26,6 +26,7 @@ export function CreatorUniverse({
   onCreatorAdded,
 }: CreatorUniverseProps) {
   const [selectedCreator, setSelectedCreator] = useState<string | undefined>(creators[0]?.id);
+  const [showAddDialog, setShowAddDialog] = useState(false);
 
   const selectedNode = useMemo(
     () => creators.find((creator) => creator.id === selectedCreator),

@@ -113,4 +113,4 @@ coverage/
 # -------------------
 # 如果你们团队使用 pnpm，可以提交 pnpm-lock.yaml
 # 如果用 npm，提交 package-lock.json
-# 这里保持默认，不忽略锁文件
+# 这里保持默认，不忽略锁文件xhs-analyser-frontend/tsconfig.tsbuildinfo
