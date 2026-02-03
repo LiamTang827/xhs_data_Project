@@ -138,7 +138,19 @@ class StyleGenerationService:
             
             # 获取笔记
             notes = self.snapshot_repo.get_notes(user_id, platform, limit)
-            return notes
+            
+            # 🔧 优化：压缩笔记内容以减少token消耗
+            # 只保留每篇笔记的前500字，而不是全文
+            compressed_notes = []
+            for note in notes:
+                compressed_note = note.copy()
+                desc = note.get('desc', note.get('description', ''))
+                if len(desc) > 500:
+                    compressed_note['desc'] = desc[:500] + '...'  # 截断并添加省略号
+                    print(f"📉 笔记已压缩: {len(desc)} → 500 字符")
+                compressed_notes.append(compressed_note)
+            
+            return compressed_notes
             
         except Exception as e:
             print(f"❌ 加载创作者笔记失败: {e}")
@@ -228,9 +240,9 @@ class StyleGenerationService:
                     "error": f"未找到创作者档案: {creator_name}"
                 }
             
-            # 2. 加载笔记样本
+            # 2. 加载笔记样本（优化：减少数量以节省token）
             print(f"📥 加载笔记样本...")
-            sample_notes = self.load_creator_notes(creator_name, platform, limit=5)
+            sample_notes = self.load_creator_notes(creator_name, platform, limit=3)
             if not sample_notes:
                 print("⚠️  未找到笔记样本，将基于档案信息生成")
             

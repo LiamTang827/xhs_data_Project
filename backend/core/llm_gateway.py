@@ -7,6 +7,8 @@ import hashlib
 import json
 import re
 import asyncio
+import uuid
+import traceback
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 from openai import OpenAI
@@ -61,8 +63,31 @@ class LLMGateway:
             生成的文本
         """
         
+        # 🔍 调用追踪（诊断异常调用）
+        call_id = str(uuid.uuid4())[:8]
+        print(f"\n{'='*60}")
+        print(f"[LLM #{call_id}] 📞 新的API调用请求")
+        print(f"[LLM #{call_id}] 🕐 时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"[LLM #{call_id}] 🤖 Model: {model}")
+        print(f"[LLM #{call_id}] 📝 Prompt长度: {len(prompt)} 字符 (压缩前)")
+        print(f"[LLM #{call_id}] ⚙️  Max Tokens: {max_tokens}")
+        print(f"[LLM #{call_id}] 🔥 Temperature: {temperature}")
+        print(f"[LLM #{call_id}] 💾 Cache: {'启用' if use_cache else '禁用'}")
+        
+        # 获取调用栈（诊断来源）
+        stack = traceback.extract_stack()
+        caller_info = None
+        for frame in reversed(stack[:-1]):  # 跳过当前函数
+            if 'llm_gateway' not in frame.filename:
+                caller_info = f"{frame.filename}:{frame.lineno} in {frame.name}"
+                break
+        if caller_info:
+            print(f"[LLM #{call_id}] 📍 调用来源: {caller_info}")
+        print(f"{'='*60}\n")
+        
         # 1️⃣ Prompt压缩
         compressed_prompt = self._compress_prompt(prompt)
+        print(f"[LLM #{call_id}] 🗜️  压缩后长度: {len(compressed_prompt)} 字符 (节省 {len(prompt) - len(compressed_prompt)} 字符)")
         
         # 2️⃣ 生成缓存键
         cache_key = self._generate_cache_key(compressed_prompt, model, temperature)
@@ -71,15 +96,22 @@ class LLMGateway:
         if use_cache:
             cached_response = await self._get_from_cache(cache_key)
             if cached_response:
-                print(f"[LLM Gateway] 💰 缓存命中: {cache_key[:16]}... (节省API调用)")
+                print(f"[LLM #{call_id}] 💰 ✅ 缓存命中！节省了API调用")
+                print(f"[LLM #{call_id}] 🎯 返回缓存内容长度: {len(cached_response)} 字符\n")
                 return cached_response
+            else:
+                print(f"[LLM #{call_id}] 💰 ❌ 缓存未命中，需要调用API")
         
         # 4️⃣ 频率限制
+        print(f"[LLM #{call_id}] ⏱️  等待限流器放行...")
         await self.rate_limiter.acquire()
+        print(f"[LLM #{call_id}] ✅ 限流器已放行")
         
         # 5️⃣ 调用API
         try:
-            print(f"[LLM Gateway] 🚀 调用API: {model} (tokens≤{max_tokens})")
+            print(f"[LLM #{call_id}] 🚀 正在调用DeepSeek API...")
+            api_start_time = datetime.now()
+            
             response = self.client.chat.completions.create(
                 model=model,
                 messages=[{"role": "user", "content": compressed_prompt}],
@@ -87,19 +119,37 @@ class LLMGateway:
                 temperature=temperature
             )
             
+            api_duration = (datetime.now() - api_start_time).total_seconds()
             result = response.choices[0].message.content
+            
+            # 打印详细的API使用统计
+            usage = response.usage
+            print(f"[LLM #{call_id}] ✅ API调用成功！")
+            print(f"[LLM #{call_id}] ⏱️  耗时: {api_duration:.2f}秒")
+            print(f"[LLM #{call_id}] 📊 Token统计:")
+            print(f"[LLM #{call_id}]    - 输入: {usage.prompt_tokens:,} tokens")
+            print(f"[LLM #{call_id}]    - 输出: {usage.completion_tokens:,} tokens")
+            print(f"[LLM #{call_id}]    - 总计: {usage.total_tokens:,} tokens")
+            print(f"[LLM #{call_id}] 💵 估算成本 (DeepSeek):")
+            input_cost = usage.prompt_tokens * 0.27 / 1_000_000
+            output_cost = usage.completion_tokens * 1.1 / 1_000_000
+            print(f"[LLM #{call_id}]    - 输入: ${input_cost:.6f}")
+            print(f"[LLM #{call_id}]    - 输出: ${output_cost:.6f}")
+            print(f"[LLM #{call_id}]    - 本次总计: ${input_cost + output_cost:.6f}")
+            print(f"[LLM #{call_id}] 📝 返回内容长度: {len(result)} 字符\n")
             
             # 6️⃣ 写入缓存（TTL=24小时）
             if use_cache:
                 await self._save_to_cache(cache_key, result)
+                print(f"[LLM #{call_id}] 💾 已保存到缓存")
             
             # 7️⃣ 记录统计
-            await self._log_usage(model, response.usage, compressed_prompt, result)
+            await self._log_usage(model, response.usage, compressed_prompt, result, call_id)
             
             return result
             
         except Exception as e:
-            print(f"[LLM Gateway] ❌ API调用失败: {e}")
+            print(f"[LLM #{call_id}] ❌ API调用失败: {e}")
             raise
     
     def _compress_prompt(self, prompt: str) -> str:
@@ -144,20 +194,38 @@ class LLMGateway:
             upsert=True
         )
     
-    async def _log_usage(self, model: str, usage: Any, prompt: str, response: str):
-        """记录使用统计"""
+    async def _log_usage(self, model: str, usage: Any, prompt: str, response: str, call_id: str = "unknown"):
+        """记录使用统计（增强版 - 包含调用追踪）"""
+        
+        # 获取调用栈信息
+        stack = traceback.extract_stack()
+        caller_file = "unknown"
+        caller_line = 0
+        caller_function = "unknown"
+        
+        for frame in reversed(stack[:-2]):  # 跳过当前和chat函数
+            if 'llm_gateway' not in frame.filename:
+                caller_file = frame.filename.split('/')[-1]  # 只保留文件名
+                caller_line = frame.lineno
+                caller_function = frame.name
+                break
+        
         log_data = {
+            "call_id": call_id,
             "model": model,
             "prompt_tokens": usage.prompt_tokens,
             "completion_tokens": usage.completion_tokens,
             "total_tokens": usage.total_tokens,
             "prompt_length": len(prompt),
             "response_length": len(response),
-            "timestamp": datetime.now()
+            "timestamp": datetime.now(),
+            "caller_file": caller_file,
+            "caller_line": caller_line,
+            "caller_function": caller_function
         }
         
         self.db.llm_usage_logs.insert_one(log_data)
-        print(f"[LLM Gateway] 📊 Token消耗: {usage.total_tokens} (提示:{usage.prompt_tokens} + 完成:{usage.completion_tokens})")
+        # 已在上面打印详细信息，这里不重复打印
 
 
 class TokenBucketRateLimiter:
