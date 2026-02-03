@@ -33,6 +33,7 @@ export function HomePage() {
   const [creatorsData, setCreatorsData] = useState<CreatorNode[]>([]);
   const [edgesData, setEdgesData] = useState<any[]>([]);
   const [clustersData, setClustersData] = useState<Record<string, string[]>>({});
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -83,7 +84,7 @@ export function HomePage() {
       }
     })();
     return () => { mounted = false };
-  }, []);
+  }, [refreshKey]);
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -124,6 +125,7 @@ export function HomePage() {
               edges={edgesData}
               clusters={clustersData}
               trendingKeywords={[]}
+              onCreatorAdded={() => setRefreshKey(k => k + 1)}
             />
           </div>
         </section>
