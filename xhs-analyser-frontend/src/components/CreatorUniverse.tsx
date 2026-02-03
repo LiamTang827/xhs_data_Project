@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import type { CreatorEdge, CreatorNode } from "@/data/creators";
 import { CreatorNetworkGraph } from "./CreatorNetworkGraph";
 import { CreatorDetailPanel } from "./CreatorDetailPanel";
-import { TrendingTopics } from "./TrendingTopics";
 import AddCreatorDialog from "./AddCreatorDialog";
 
 interface CreatorUniverseProps {
@@ -66,15 +65,6 @@ export function CreatorUniverse({
             <CreatorDetailPanel node={selectedNode} />
           </div>
         </div>
-      </section>
-
-      {/* 流量密码 - 基于当前关注圈的热门话题 */}
-      <section id="traffic-secrets" className="mt-8">
-        <TrendingTopics
-          creators={creators}
-          clusters={clusters}
-          renderCreatorTag={(creatorId) => nameLookup.get(creatorId) ?? creatorId}
-        />
       </section>
 
       {/* 添加创作者对话框 */}

@@ -185,19 +185,36 @@ export function CreatorDetailPanel({ node }: CreatorDetailPanelProps) {
         <IndexChartPanel node={node} />
       </div>
 
-      {/* 标签 */}
-      {node.recentKeywords && node.recentKeywords.length > 0 && (
+      {/* 流量密码 - 基于该创作者的热门话题 */}
+      {((node.topics && node.topics.length > 0) || (node.recentKeywords && node.recentKeywords.length > 0)) && (
         <div className="mt-6">
-          <h4 className="text-sm font-semibold text-black/70">标签</h4>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {node.recentKeywords.map((keyword) => (
-              <span
-                key={`${node.id}-${keyword}`}
-                className="rounded-full bg-blue-50 px-3 py-1 text-xs text-blue-700"
-              >
-                #{keyword}
-              </span>
-            ))}
+          <div className="mb-3 flex items-center gap-2">
+            <h4 className="text-sm font-semibold text-black/70">🔥 流量密码</h4>
+            <span className="text-xs text-black/40">·</span>
+            <span className="text-xs text-black/40">基于最近笔记热门话题</span>
+          </div>
+          <div className="rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50/50 to-purple-50/50 p-4">
+            <div className="flex flex-wrap gap-2">
+              {(node.topics || node.recentKeywords || []).slice(0, 8).map((topic, idx) => (
+                <button
+                  key={`${node.id}-topic-${idx}`}
+                  onClick={() => {
+                    navigator.clipboard.writeText(topic);
+                    // 可以添加toast提示
+                  }}
+                  className="group rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm text-black/80 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                  title="点击复制话题"
+                >
+                  <span className="font-medium">#{topic}</span>
+                  <span className="ml-1.5 opacity-0 group-hover:opacity-100 transition-opacity">📋</span>
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 pt-3 border-t border-blue-100">
+              <p className="text-xs text-black/60 leading-relaxed">
+                💡 <strong>使用提示：</strong>点击话题复制后，前往 AI风格生成器 粘贴生成内容
+              </p>
+            </div>
           </div>
         </div>
       )}
