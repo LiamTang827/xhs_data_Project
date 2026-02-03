@@ -5,9 +5,6 @@ import type { CreatorEdge, CreatorNode } from "@/data/creators";
 import { CreatorNetworkGraph } from "./CreatorNetworkGraph";
 import { CreatorDetailPanel } from "./CreatorDetailPanel";
 import { TrendingTopics } from "./TrendingTopics";
-import { FollowingAnalysis } from "./FollowingAnalysis";
-import { GrowthPath } from "./GrowthPath";
-import { trendingTopicsData } from "@/data/trending";
 
 interface CreatorUniverseProps {
   creators: CreatorNode[];
@@ -57,30 +54,14 @@ export function CreatorUniverse({
         </div>
       </section>
 
-      {/* 成长路径推荐 */}
-      <section id="growth">
-        <GrowthPath
-          userProfile={{
-            estimatedFollowers: 3000,
-            interestedTracks: ["美妆", "时尚"],
-          }}
-          followingCreators={creators}
-          onSelectCreator={setSelectedCreator}
+      {/* 流量密码 - 基于当前关注圈的热门话题 */}
+      <section id="traffic-secrets" className="mt-8">
+        <TrendingTopics
+          creators={creators}
+          clusters={clusters}
+          renderCreatorTag={(creatorId) => nameLookup.get(creatorId) ?? creatorId}
         />
       </section>
-
-      {/* 流量密码榜 (暂时隐藏) */}
-      {/* <TrendingTopics
-        data={trendingTopicsData}
-        renderCreatorTag={(creatorId) => nameLookup.get(creatorId) ?? creatorId}
-      /> */}
-
-      {/* 关注圈分析 (暂时隐藏) */}
-      {/* <FollowingAnalysis 
-        clusters={clusters} 
-        nodes={creators} 
-        onSelect={setSelectedCreator} 
-      /> */}
     </div>
   );
 }
