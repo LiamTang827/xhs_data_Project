@@ -18,7 +18,8 @@ async function fetchAllCreators(): Promise<CreatorNode[]> {
     id: doc.user_id || doc._id?.toString(),
     name: doc.nickname || '',
     followers: Number(doc.fans || doc.followers || 0),
-    engagementIndex: Number(doc.interaction || doc.engagement || 0),
+    totalEngagement: Number(doc.totalEngagement || doc.interaction || doc.engagement || 0),
+    engagementIndex: Number(doc.interaction || doc.engagement || 0),  // 兼容旧数据
     primaryTrack: doc.primaryTrack || '其他',
     contentForm: doc.contentForm || '创作者',
     recentKeywords: Array.isArray(doc.tag_list) ? doc.tag_list : (doc.tag_list ? JSON.parse(doc.tag_list || '[]') : []),
@@ -55,7 +56,7 @@ export default async function CreatorDetailPage({ params }: PageProps) {
           <h1 className="text-3xl font-semibold text-black">{creator.name}</h1>
           <div className="mt-3 flex flex-wrap gap-4 text-sm text-black/60">
             <span>粉丝数：{creator.followers.toLocaleString()}</span>
-            <span>互动率：{creator.engagementIndex}%</span>
+            <span>总互动数：{(creator.totalEngagement || creator.engagementIndex || 0).toLocaleString()}</span>
             <span>内容形式：{creator.contentForm}</span>
           </div>
 

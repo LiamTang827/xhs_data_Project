@@ -26,7 +26,7 @@ else:
     # 尝试从当前目录加载
     load_dotenv(Path(__file__).parent / '.env')
 
-from database import UserSnapshotRepository
+from database import UserSnapshotRepository, UserProfileRepository
 from datetime import datetime
 
 # ============================================
@@ -34,7 +34,8 @@ from datetime import datetime
 # ============================================
 
 USER_ID = '5e6472940000000001008d4e'  # 修改为目标用户ID
-TIKHUB_API_URL = 'https://api.tikhub.io/api/v1/xiaohongshu/web/get_user_notes_v2'
+TIKHUB_NOTES_API = 'https://api.tikhub.io/api/v1/xiaohongshu/web/get_user_notes_v2'
+TIKHUB_USER_INFO_API = 'https://api.tikhub.io/api/v1/xiaohongshu/web_v2/fetch_user_info_app'
 
 # TikHub API Token（从环境变量读取）
 TIKHUB_TOKEN = os.getenv('TIKHUB_TOKEN')
@@ -80,7 +81,12 @@ def fetch_user_notes(user_id: str) -> dict:
         try:
             print(f"  第 {batch_num} 批...", end="")
             
-            response = requests.get(TIKHUB_API_URL, params=params, headers=headers)
+            response = requests.get(
+                TIKHUB_NOTES_API, 
+                params=params, 
+                headers=headers,
+                timeout=30  # 添加30秒超时
+            )
             response_data = response.json()
             
             # 检查响应
@@ -135,23 +141,84 @@ def fetch_user_notes(user_id: str) -> dict:
     }
 
 
-def save_to_mongodb(user_id: str, data: dict):
+def fetch_user_info(user_id: str) -> dict:
     """
-    保存数据到MongoDB
+    获取用户详细信息
     
     Args:
         user_id: 用户ID
-        data: 包含user和notes的数据
+        
+    Returns:
+        包含basic_info, stats, tags的用户信息字典
     """
-    if not data['user']:
-        print("❌ 缺少用户信息，无法保存")
-        return
+    print("\n📊 获取用户详细信息...")
+    
+    params = {'user_id': user_id}
     
     try:
-        repo = UserSnapshotRepository()
+        response = requests.get(
+            TIKHUB_USER_INFO_API, 
+            params=params, 
+            headers=headers,
+            timeout=30  # 添加30秒超时
+        )
+        response_data = response.json()
         
-        # 检查是否已存在
-        existing = repo.get_by_user_id(user_id)
+        if response.status_code != 200 or response_data.get('code') != 200:
+            print(f"⚠️  用户信息API错误: {response_data.get('message', '未知错误')}")
+            return None
+        
+        data = response_data.get('data', {})
+        
+        user_info = {
+            'basic_info': {
+                'nickname': data.get('nickname', ''),
+                'red_id': data.get('red_id', ''),
+                'desc': data.get('desc', ''),
+                'avatar': data.get('images', ''),
+                'gender': data.get('gender', 0),
+                'ip_location': data.get('ip_location', '')
+            },
+            'stats': {
+                'fans': data.get('fans', 0),
+                'follows': data.get('follows', 0),
+                'total_liked': data.get('liked', 0),
+                'total_collected': data.get('collected', 0),
+                'note_count': data.get('collected_notes_num', 0)
+            },
+            'tags': [tag.get('name') if isinstance(tag, dict) else str(tag) 
+                    for tag in data.get('tags', [])]
+        }
+        
+        nickname = user_info['basic_info']['nickname']
+        fans = user_info['stats']['fans']
+        print(f"✅ {nickname} - 粉丝数: {fans:,}")
+        
+        return user_info
+        
+    except requests.exceptions.Timeout:
+        print(f"⚠️  获取用户信息超时（30秒）")
+        return None
+    except Exception as e:
+        print(f"⚠️  获取用户信息失败: {e}")
+        return None
+
+
+def save_to_mongodb(user_id: str, data: dict):
+    """
+    保存数据到MongoDB（包括snapshots和profiles）
+    
+    Args:
+        user_id: 用户ID
+        data: 包含notes和user_info的数据
+    """
+    try:
+        snapshot_repo = UserSnapshotRepository()
+        profile_repo = UserProfileRepository()
+        
+        # 1. 保存笔记快照到 user_snapshots
+        print("\n💾 保存笔记数据到 user_snapshots...")
+        existing_snapshot = snapshot_repo.get_by_user_id(user_id)
         
         snapshot_data = {
             'platform': 'xiaohongshu',
@@ -161,31 +228,93 @@ def save_to_mongodb(user_id: str, data: dict):
             'created_at': datetime.now()
         }
         
-        if existing:
-            repo.update_snapshot(user_id, 'xiaohongshu', data['notes'])
-            print(f"✅ 已更新到MongoDB: {data['user'].get('nickname', user_id)}")
+        if existing_snapshot:
+            snapshot_repo.update_snapshot(user_id, 'xiaohongshu', data['notes'])
+            print(f"✅ 已更新笔记快照: {len(data['notes'])} 条笔记")
         else:
-            repo.create_snapshot(snapshot_data)
-            print(f"✅ 已保存到MongoDB: {data['user'].get('nickname', user_id)}")
+            snapshot_repo.create_snapshot(snapshot_data)
+            print(f"✅ 已保存笔记快照: {len(data['notes'])} 条笔记")
+        
+        # 2. 保存用户详细信息到 user_profiles
+        if data.get('user_info'):
+            print("💾 保存用户信息到 user_profiles...")
+            user_info = data['user_info']
+            existing_profile = profile_repo.get_by_user_id(user_id)
+            
+            if existing_profile:
+                # 更新，保留已有的profile_data（AI分析结果）
+                profile_repo.collection.update_one(
+                    {'user_id': user_id, 'platform': 'xiaohongshu'},
+                    {
+                        '$set': {
+                            'basic_info': user_info['basic_info'],
+                            'stats': user_info['stats'],
+                            'tags': user_info['tags'],
+                            'synced_from_api_at': datetime.now(),
+                            'updated_at': datetime.now()
+                        }
+                    }
+                )
+                print(f"✅ 已更新用户profile: {user_info['basic_info']['nickname']}")
+            else:
+                # 创建新profile
+                profile_repo.collection.insert_one({
+                    'platform': 'xiaohongshu',
+                    'user_id': user_id,
+                    'basic_info': user_info['basic_info'],
+                    'stats': user_info['stats'],
+                    'tags': user_info['tags'],
+                    'profile_data': {},  # 等待AI分析
+                    'synced_from_api_at': datetime.now(),
+                    'created_at': datetime.now(),
+                    'updated_at': datetime.now()
+                })
+                print(f"✅ 已创建用户profile: {user_info['basic_info']['nickname']}")
+                print(f"   粉丝数: {user_info['stats']['fans']:,}")
+        else:
+            print("⚠️  未获取到用户详细信息，仅保存笔记数据")
             
     except Exception as e:
         print(f"❌ 保存失败: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 def main():
     """主函数"""
-    print("\n🎯 TikHub数据采集工具")
+    print("\n" + "="*60)
+    print("🎯 小红书数据采集工具 (整合版)")
+    print("="*60)
     print(f"目标用户: {USER_ID}\n")
     
-    # 获取数据
-    data = fetch_user_notes(USER_ID)
+    # 1. 获取笔记数据
+    notes_data = fetch_user_notes(USER_ID)
     
-    # 保存到MongoDB
-    if data['user']:
-        save_to_mongodb(USER_ID, data)
-        print(f"\n💡 下一步运行: cd collectors/xiaohongshu && python3 pipeline.py --user_id {USER_ID}")
-    else:
-        print("\n❌ 未能获取用户信息")
+    if not notes_data['notes']:
+        print("\n❌ 未能获取笔记数据")
+        return
+    
+    # 2. 获取用户详细信息
+    user_info = fetch_user_info(USER_ID)
+    
+    # 3. 保存到MongoDB
+    full_data = {
+        'notes': notes_data['notes'],
+        'user_info': user_info
+    }
+    
+    save_to_mongodb(USER_ID, full_data)
+    
+    print("\n" + "="*60)
+    print("✨ 数据采集完成！")
+    print("="*60)
+    print(f"\n📊 数据统计:")
+    print(f"  - 笔记数: {len(notes_data['notes'])}")
+    if user_info:
+        print(f"  - 用户: {user_info['basic_info']['nickname']}")
+        print(f"  - 粉丝数: {user_info['stats']['fans']:,}")
+    print(f"\n💡 下一步运行: cd backend && python scripts/process_all_snapshots.py")
+    print(f"   （使用DeepSeek AI分析内容，生成profile_data）")
 
 
 if __name__ == "__main__":

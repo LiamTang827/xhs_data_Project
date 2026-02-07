@@ -30,7 +30,7 @@ class StyleGenerationService:
     
     def get_available_creators(self, platform: str = "xiaohongshu") -> List[Dict[str, Any]]:
         """
-        获取可用的创作者列表
+        获取可用的创作者列表（从snapshots提取最新#hashtags）
         
         Args:
             platform: 平台类型
@@ -39,45 +39,57 @@ class StyleGenerationService:
             创作者列表 [{"name": "xxx", "user_id": "xxx", "topics": [...], "style": "xxx"}, ...]
         """
         try:
+            from database.repositories import UserSnapshotRepository
+            from datetime import datetime, timedelta
+            import re
+            from collections import Counter
+            
             profiles = self.profile_repo.get_all_profiles(platform=platform)
+            snapshot_repo = UserSnapshotRepository()
             
             creators = []
             for profile in profiles:
-                nickname = profile.get("nickname", "未知")
-                # 使用nickname作为user_id（因为user_id可能为空）
-                user_id = profile.get("user_id") or nickname
+                nickname = profile.get("basic_info", {}).get("nickname") or profile.get("nickname", "未知")
+                user_id = profile.get("user_id")
                 
-                # 从profile_data中提取topics和style
-                profile_data = profile.get("profile_data", {})
+                if not user_id:
+                    continue
+                
+                # 从snapshot中提取最近30天的#hashtags
+                snapshot = snapshot_repo.get_by_user_id(user_id, platform)
                 topics = []
-                style = "未知风格"
                 
-                if isinstance(profile_data, dict):
-                    # 尝试提取topics (检查content_topics, topics, 关键主题)
-                    if "content_topics" in profile_data:
-                        topics = profile_data["content_topics"]
-                    elif "topics" in profile_data:
-                        topics = profile_data["topics"]
-                    elif "关键主题" in profile_data:
-                        topics = profile_data["关键主题"]
+                if snapshot:
+                    notes = snapshot.get('notes', [])
+                    # 过滤最近30天
+                    cutoff_time = datetime.now() - timedelta(days=30)
+                    cutoff_ts = int(cutoff_time.timestamp())
+                    recent_notes = [n for n in notes if n.get('create_time', 0) >= cutoff_ts]
                     
-                    # 尝试提取style (检查content_style, style, 风格, 写作风格)
-                    if "content_style" in profile_data:
-                        style_list = profile_data["content_style"]
-                        style = ", ".join(style_list) if isinstance(style_list, list) else str(style_list)
-                    elif "style" in profile_data:
-                        style = profile_data["style"]
-                    elif "风格" in profile_data:
-                        style = profile_data["风格"]
-                    elif "写作风格" in profile_data:
-                        style = profile_data["写作风格"]
+                    # 提取hashtags
+                    hashtags = []
+                    for note in recent_notes[:20]:
+                        title = note.get('title', '') or ''
+                        desc = note.get('desc') or ''
+                        text = title + ' ' + desc
+                        tags = re.findall(r'#([\w\u4e00-\u9fa5]+)', text)
+                        hashtags.extend(tags)
+                    
+                    if hashtags:
+                        tag_count = Counter(hashtags)
+                        topics = [tag for tag, count in tag_count.most_common(8)]
+                
+                if not topics:
+                    topics = ["综合内容"]
                 
                 creators.append({
                     "name": nickname,
                     "user_id": user_id,
-                    "topics": topics if isinstance(topics, list) else [str(topics)],
-                    "style": str(style) if style else "未知风格"
+                    "topics": topics,
+                    "style": "创作者"
                 })
+            
+            return creators
             
             return creators
             
@@ -176,6 +188,11 @@ class StyleGenerationService:
             完整的提示词
         """
         try:
+            from database.repositories import UserSnapshotRepository
+            from datetime import datetime, timedelta
+            import re
+            from collections import Counter
+            
             # 从数据库获取提示词模板
             prompt_data = self.prompt_repo.get_by_type("style_generation")
             if not prompt_data:
@@ -184,8 +201,37 @@ class StyleGenerationService:
             else:
                 template = prompt_data.get("template", self._get_default_template())
             
-            # 提取档案信息
-            topics = ", ".join(creator_profile.get("topics", []))
+            # 从 snapshot 提取真实的 #hashtags（最近30天）
+            profile = self.profile_repo.get_profile_by_nickname(creator_name, "xiaohongshu")
+            topics = []
+            if profile:
+                user_id = profile.get("user_id")
+                if user_id:
+                    snapshot_repo = UserSnapshotRepository()
+                    snapshot = snapshot_repo.get_by_user_id(user_id, "xiaohongshu")
+                    if snapshot:
+                        notes = snapshot.get('notes', [])
+                        # 过滤最近30天
+                        cutoff_time = datetime.now() - timedelta(days=30)
+                        cutoff_ts = int(cutoff_time.timestamp())
+                        recent_notes = [n for n in notes if n.get('create_time', 0) >= cutoff_ts]
+                        
+                        # 提取hashtags
+                        hashtags = []
+                        for note in recent_notes[:20]:
+                            title = note.get('title', '') or ''
+                            desc = note.get('desc') or ''
+                            text = title + ' ' + desc
+                            tags = re.findall(r'#([\w\u4e00-\u9fa5]+)', text)
+                            hashtags.extend(tags)
+                        
+                        if hashtags:
+                            tag_count = Counter(hashtags)
+                            topics = [tag for tag, count in tag_count.most_common(8)]
+            
+            topics_text = ", ".join(topics) if topics else "综合内容"
+            
+            # 提取档案信息（保留兼容性）
             content_style = creator_profile.get("content_style", "")
             value_points = "\n".join([f"- {vp}" for vp in creator_profile.get("value_points", [])])
             
@@ -196,15 +242,20 @@ class StyleGenerationService:
                 desc = note.get("desc", note.get("description", ""))
                 sample_notes_text += f"\n【笔记{i}】\n标题：{title}\n内容：{desc}\n"
             
+            # 填充模板，并在prompt中明确提示使用这些热点标签
+            hot_topics_instruction = ""
+            if topics:
+                hot_topics_instruction = f"\n\n⚠️ 重要：请在生成的内容中自然融入以下热点话题标签（这些是{creator_name}最近30天爆款笔记中的真实标签）：\n{', '.join(['#' + t for t in topics[:5]])}\n请在合适的地方使用这些标签，增加内容的热度和曝光度。"
+            
             # 填充模板
             prompt = template.format(
                 nickname=creator_name,
-                topics=topics,
+                topics=topics_text,
                 content_style=content_style,
                 value_points=value_points,
                 sample_notes=sample_notes_text,
                 user_topic=user_topic
-            )
+            ) + hot_topics_instruction
             
             return prompt
             

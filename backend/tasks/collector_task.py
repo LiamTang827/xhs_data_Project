@@ -44,12 +44,13 @@ class CollectorTask:
             # 2. 检查创作者是否已存在
             await self._update_progress("checking", 10, "检查创作者是否存在...")
             profile_repo = UserProfileRepository()
-            existing = profile_repo.get_profile_by_user_id(self.user_id, "xiaohongshu")
+            existing = profile_repo.get_by_user_id(self.user_id, "xiaohongshu")
             
             if existing:
+                nickname = existing.get('basic_info', {}).get('nickname') or existing.get('nickname', self.user_id)
                 return {
                     "success": False,
-                    "error": f"创作者已存在: {existing.get('nickname', self.user_id)}",
+                    "error": f"创作者已存在: {nickname}",
                     "creator": existing
                 }
             
@@ -66,17 +67,17 @@ class CollectorTask:
             notes_count = fetch_result["notes_count"]
             await self._update_progress("fetching", 50, f"成功爬取 {notes_count} 篇笔记")
             
-            # 4. 调用pipeline分析数据
-            await self._update_progress("analyzing", 60, "正在分析创作者画像...")
-            analysis_result = await self._analyze_user()
+            # 4. 提取关键词（跳过AI分析，节省API费用）
+            await self._update_progress("analyzing", 60, "正在提取内容话题...")
+            extract_result = await self._extract_topics()
             
-            if not analysis_result["success"]:
+            if not extract_result["success"]:
                 return {
                     "success": False,
-                    "error": analysis_result["error"]
+                    "error": extract_result["error"]
                 }
             
-            creator_data = analysis_result["creator"]
+            creator_data = extract_result["creator"]
             await self._update_progress("analyzing", 90, "分析完成")
             
             # 5. 完成
@@ -104,31 +105,44 @@ class CollectorTask:
         """调用collector爬取笔记"""
         try:
             # 导入collector
-            from collector import fetch_user_notes, save_to_mongodb
+            from collector import fetch_user_notes, fetch_user_info, save_to_mongodb
             
             # 在线程池中执行同步代码
             loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(
+            
+            # 1. 获取笔记
+            notes_result = await loop.run_in_executor(
                 None,
                 fetch_user_notes,
                 self.user_id
             )
             
-            if not result:
-                return {"success": False, "error": "无法获取用户数据，请检查用户ID是否正确"}
+            if not notes_result or not notes_result.get('notes'):
+                return {"success": False, "error": "无法获取用户笔记，请检查用户ID是否正确"}
             
-            user_info = result.get("user")
-            notes = result.get("notes", [])
+            notes = notes_result.get('notes', [])
             
-            if not notes:
-                return {"success": False, "error": "该用户没有公开笔记"}
+            # 2. 获取用户信息
+            user_info = await loop.run_in_executor(
+                None,
+                fetch_user_info,
+                self.user_id
+            )
             
-            # 保存到MongoDB
+            if not user_info:
+                return {"success": False, "error": "无法获取用户详细信息"}
+            
+            # 3. 保存到MongoDB（新版collector需要这个格式）
+            data = {
+                'notes': notes,
+                'user_info': user_info
+            }
+            
             await loop.run_in_executor(
                 None,
                 save_to_mongodb,
-                user_info,
-                notes
+                self.user_id,
+                data
             )
             
             return {
@@ -138,41 +152,65 @@ class CollectorTask:
             }
             
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return {
                 "success": False,
                 "error": f"爬取失败: {str(e)}"
             }
     
-    async def _analyze_user(self) -> Dict[str, Any]:
-        """调用pipeline分析用户"""
+    async def _extract_topics(self) -> Dict[str, Any]:
+        """从笔记中提取#话题标签（不使用AI分析）"""
         try:
-            # 导入pipeline
-            from pipeline import process_user
-            from FlagEmbedding import FlagModel
+            import re
+            from collections import Counter
             
-            # 加载embedding模型
-            model_name = "BAAI/bge-small-zh-v1.5"
-            print(f"📦 加载embedding模型: {model_name}")
-            embedding_model = FlagModel(model_name, use_fp16=True)
+            # 获取snapshot
+            snapshot_repo = UserSnapshotRepository()
+            snapshot = snapshot_repo.get_by_user_id(self.user_id, "xiaohongshu")
             
-            # 在线程池中执行同步代码
-            loop = asyncio.get_event_loop()
-            success = await loop.run_in_executor(
-                None,
-                process_user,
-                self.user_id,
-                embedding_model
-            )
+            if not snapshot:
+                return {"success": False, "error": "未找到笔记数据"}
             
-            if not success:
-                return {"success": False, "error": "分析失败，请查看日志"}
+            notes = snapshot.get('notes', [])
             
-            # 获取创建的profile
+            # 提取#话题标签
+            hashtags = []
+            for note in notes[:20]:  # 分析前20条笔记
+                title = note.get('title', '') or ''
+                desc = note.get('desc') or ''
+                text = title + ' ' + desc
+                
+                # 提取 #xxx 或 #xxx# 格式的话题
+                # 匹配 # 后面跟着的中文、英文、数字
+                tags = re.findall(r'#([\w\u4e00-\u9fa5]+)', text)
+                hashtags.extend(tags)
+            
+            # 统计词频，取前5个高频标签
+            if hashtags:
+                tag_count = Counter(hashtags)
+                topics = [tag for tag, count in tag_count.most_common(8)]  # 取前8个
+            else:
+                topics = ["综合内容"]
+            
+            # 更新profile，添加提取的topics
             profile_repo = UserProfileRepository()
-            creator_data = profile_repo.get_profile_by_user_id(self.user_id, "xiaohongshu")
+            profile = profile_repo.get_by_user_id(self.user_id, "xiaohongshu")
             
-            if not creator_data:
-                return {"success": False, "error": "分析完成但未找到创建的profile"}
+            if profile:
+                # 更新profile_data中的content_topics
+                profile_data = profile.get('profile_data', {})
+                profile_data['content_topics'] = topics
+                
+                profile_repo.collection.update_one(
+                    {"user_id": self.user_id, "platform": "xiaohongshu"},
+                    {"$set": {"profile_data": profile_data}}
+                )
+                
+                print(f"✅ 提取话题: {', '.join(topics)}")
+            
+            # 获取更新后的profile
+            creator_data = profile_repo.get_by_user_id(self.user_id, "xiaohongshu")
             
             return {
                 "success": True,
@@ -182,7 +220,7 @@ class CollectorTask:
         except Exception as e:
             return {
                 "success": False,
-                "error": f"分析失败: {str(e)}"
+                "error": f"提取话题失败: {str(e)}"
             }
     
     async def _update_progress(self, status: str, percent: int, message: str):

@@ -77,9 +77,9 @@ export function StyleChatbot() {
     setGeneratedContent("");
 
     try {
-      // 使用环境变量，默认localhost:8000（与后端端口一致）
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
       const selectedCreatorData = creators.find(c => c.name === selectedCreator);
+      
       const response = await fetch(`${API_URL}/api/style/generate`, {
         method: 'POST',
         headers: {
@@ -117,7 +117,7 @@ export function StyleChatbot() {
           ✍️ AI风格模仿生成器
         </h2>
         <p className="text-sm text-black/60">
-          选择一位创作者，输入你想创作的内容，AI将模仿TA的风格为你生成小红书文案
+          选择创作者 → 输入内容 → 一键生成爆款文案
         </p>
       </div>
 
@@ -141,31 +141,9 @@ export function StyleChatbot() {
                 </option>
               ))}
             </select>
-
-            {/* 显示创作者信息 */}
-            {selectedCreatorInfo && (
-              <div className="mt-4 rounded-lg bg-blue-50 p-4">
-                <h4 className="text-sm font-semibold text-black mb-2">
-                  创作者画像
-                </h4>
-                <div className="space-y-1 text-sm text-black/70">
-                  <p><strong>主要话题：</strong></p>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {selectedCreatorInfo.topics.slice(0, 5).map((topic, idx) => (
-                      <span
-                        key={idx}
-                        className="rounded-full bg-blue-100 px-3 py-1 text-xs text-blue-700"
-                      >
-                        {topic}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* 内容输入 */}
+          {/* 内容输入区 */}
           <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm">
             <label className="block text-sm font-semibold text-black mb-3">
               你想创作什么内容？
@@ -173,20 +151,60 @@ export function StyleChatbot() {
             <textarea
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
-              placeholder="例如：介绍一下ChatGPT的最新功能更新..."
-              rows={6}
+              placeholder="例如：介绍一下最新的AI工具...&#10;&#10;💡 提示：可以从左侧星图的「流量密码」复制热点话题，粘贴到这里，让AI融入这些热门标签！"
+              rows={8}
               className="w-full rounded-lg border border-black/20 bg-white px-4 py-3 text-black placeholder:text-black/40 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-none"
             />
-            
-            <div className="mt-4 flex items-center gap-3">
-              <button
-                onClick={handleGenerate}
-                disabled={loading || !selectedCreator || !userInput.trim()}
-                className="flex-1 rounded-lg bg-blue-600 px-6 py-3 text-white font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-              >
-                {loading ? "生成中..." : "🚀 生成文案"}
-              </button>
+          </div>
+
+          {/* 热点话题展示区（只读，提示复制） */}
+          {selectedCreatorInfo && selectedCreatorInfo.topics.length > 0 && (
+            <div className="rounded-2xl border border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <h4 className="text-sm font-semibold text-black">
+                  🔥 TA的热点话题
+                </h4>
+                <span className="text-xs text-black/40">·</span>
+                <span className="text-xs text-black/60">基于最近30天爆款笔记</span>
+              </div>
+              <p className="text-xs text-purple-700 mb-3">
+                💡 点击话题复制，然后粘贴到上方内容框，AI会自动融入这些热点！
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {selectedCreatorInfo.topics.map((topic, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      navigator.clipboard.writeText(`#${topic}`);
+                      // 简单的视觉反馈
+                      const btn = document.getElementById(`topic-btn-${idx}`);
+                      if (btn) {
+                        btn.textContent = '✓ 已复制';
+                        setTimeout(() => {
+                          btn.textContent = `#${topic}`;
+                        }, 1000);
+                      }
+                    }}
+                    id={`topic-btn-${idx}`}
+                    className="group rounded-lg px-3 py-2 text-sm font-medium bg-white text-purple-700 border-2 border-purple-300 hover:border-purple-600 hover:bg-purple-50 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                    title="点击复制话题"
+                  >
+                    #{topic}
+                  </button>
+                ))}
+              </div>
             </div>
+          )}
+
+          {/* 生成按钮 */}
+          <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm">
+            <button
+              onClick={handleGenerate}
+              disabled={loading || !selectedCreator || !userInput.trim()}
+              className="w-full rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4 text-white font-semibold hover:from-blue-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
+            >
+              {loading ? "🎨 AI创作中..." : "🚀 一键生成爆款文案"}
+            </button>
 
             {error && (
               <div className="mt-3 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-600">

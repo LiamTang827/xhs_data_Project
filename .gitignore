@@ -28,6 +28,14 @@ __pycache__/
 # Next.js 的编译输出文件夹
 .next/
 out/
+
+# TypeScript 构建缓存
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# Vercel 部署相关
+.vercel
+.vercel-rebuild
 build/
 dist/
 

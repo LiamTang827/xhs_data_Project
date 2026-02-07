@@ -6,7 +6,14 @@ export interface CreatorNode {
   id: string;
   name: string;
   followers: number;
-  engagementIndex: number;
+  fansGrowth7d?: number;  // 7天粉丝增长数
+  totalEngagement?: number;  // 最近30天总互动数
+  totalLikes?: number;
+  totalCollects?: number;
+  totalComments?: number;
+  totalShares?: number;
+  noteCount?: number;  // 最近30天笔记数
+  engagementIndex?: number;  // 兼容旧数据
   primaryTrack: string;
   contentForm: string;
   recentKeywords: string[];
@@ -16,6 +23,7 @@ export interface CreatorNode {
   desc?: string;
   redId?: string;
   topics?: string[];
+  indexSeries?: Array<{ ts: number; value: number }>;
 }
 
 export type CreatorEdgeSignal = "keyword" | "audience" | "style" | "campaign";

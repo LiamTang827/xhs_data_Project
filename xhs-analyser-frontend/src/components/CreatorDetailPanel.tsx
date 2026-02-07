@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import type { CreatorNode } from "@/data/creators";
 
 interface CreatorDetailPanelProps {
@@ -126,14 +126,12 @@ function IndexChartPanel({ node }: { node?: CreatorNode }) {
         <div className="text-sm font-medium text-black/70">Creator Index</div>
         <div className="text-xs text-black/40">基于发布数据的影响力指数</div>
       </div>
-      <LineChart series={series} />
+      <LineChart series={series} height={280} />
     </div>
   );
 }
 
 export function CreatorDetailPanel({ node }: CreatorDetailPanelProps) {
-  const [showFullProfile, setShowFullProfile] = useState(false);
-
   if (!node) {
     return (
       <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-black/20 bg-white/70 p-8 text-sm text-black/50">
@@ -166,19 +164,45 @@ export function CreatorDetailPanel({ node }: CreatorDetailPanelProps) {
         </div>
       </div>
 
-      {/* 统计数据和 Creator Index 图 */}
-      <dl className="mt-6 grid grid-cols-2 gap-4 text-sm">
-        <div>
-          <dt className="text-black/50">粉丝数</dt>
-          <dd className="text-lg font-semibold text-black">
-            {node.followers.toLocaleString()}
-          </dd>
+      {/* 统计数据 - 更大更醒目的显示 */}
+      <div className="mt-6 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
+        <div className="grid grid-cols-2 gap-6">
+          {/* 粉丝规模 */}
+          <div className="text-center">
+            <dt className="text-sm font-medium text-black/60 mb-2">📊 粉丝规模</dt>
+            <dd className="text-1xl font-bold text-black tracking-tight">
+              {node.followers.toLocaleString()}
+            </dd>
+            {/* 7天增长 */}
+            {node.fansGrowth7d !== undefined && node.fansGrowth7d !== null && (
+              <div className={`mt-2 inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-semibold ${
+                node.fansGrowth7d > 0 ? 'bg-green-100 text-green-700' : 
+                node.fansGrowth7d < 0 ? 'bg-red-100 text-red-700' : 
+                'bg-gray-100 text-gray-700'
+              }`}>
+                <span className="text-lg">{node.fansGrowth7d > 0 ? '↗' : node.fansGrowth7d < 0 ? '↘' : '→'}</span>
+                <span>7天 {node.fansGrowth7d > 0 ? '+' : ''}{node.fansGrowth7d.toLocaleString()}</span>
+                {node.followers > 0 && (
+                  <span className="text-xs opacity-75">
+                    ({((node.fansGrowth7d / node.followers) * 100).toFixed(2)}%)
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+          
+          {/* 30天互动 */}
+          <div className="text-center">
+            <dt className="text-sm font-medium text-black/60 mb-2">🔥 30天互动</dt>
+            <dd className="text-2xl font-bold text-indigo-600 tracking-tight">
+              {node.totalEngagement?.toLocaleString() || 0}
+            </dd>
+            <div className="mt-2 text-xs text-black/50">
+              {node.noteCount || 0}篇笔记 · 平均{node.noteCount ? Math.round((node.totalEngagement || 0) / node.noteCount).toLocaleString() : 0}互动/篇
+            </div>
+          </div>
         </div>
-        <div>
-          <dt className="text-black/50">互动率</dt>
-          <dd className="text-lg font-semibold text-black">{node.engagementIndex}%</dd>
-        </div>
-      </dl>
+      </div>
 
       {/* Creator Index 折线图 - 直接显示 */}
       <div className="mt-6">
@@ -218,61 +242,6 @@ export function CreatorDetailPanel({ node }: CreatorDetailPanelProps) {
           </div>
         </div>
       )}
-
-      {/* 完整画像折叠内容 */}
-      {showFullProfile && (
-        <div className="mt-6 border-t border-black/10 pt-6">
-          <h4 className="text-sm font-semibold text-black/70 mb-3">完整画像</h4>
-
-          {/* 其余元信息 */}
-          {node.desc && (
-            <div className="mb-4">
-              <dt className="text-xs text-black/50 mb-1">个人简介</dt>
-              <dd className="text-sm text-black/80 whitespace-pre-wrap leading-relaxed">
-                {node.desc}
-              </dd>
-            </div>
-          )}
-
-          {node.redId && (
-            <div className="mb-4">
-              <dt className="text-xs text-black/50 mb-1">小红书号</dt>
-              <dd className="text-sm text-black/80 font-mono">
-                {node.redId}
-              </dd>
-            </div>
-          )}
-
-          <div className="mb-4">
-            <dt className="text-xs text-black/50 mb-1">用户 ID</dt>
-            <dd className="text-sm text-black/80 font-mono break-all">
-              {node.id}
-            </dd>
-          </div>
-
-          {node.avatar && (
-            <div>
-              <dt className="text-xs text-black/50 mb-1">头像</dt>
-              <dd className="text-xs text-blue-600 break-all hover:underline">
-                <a href={node.avatar} target="_blank" rel="noopener noreferrer">
-                  查看原图 →
-                </a>
-              </dd>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 查看完整画像按钮 */}
-      <button
-        onClick={() => setShowFullProfile(!showFullProfile)}
-        className="mt-6 w-full text-sm text-blue-600 hover:text-blue-700 transition-colors flex items-center justify-center gap-1"
-      >
-        {showFullProfile ? '收起' : '查看完整画像'}
-        <span className={`transition-transform ${showFullProfile ? 'rotate-180' : ''}`}>
-          ↓
-        </span>
-      </button>
     </div>
   );
 }

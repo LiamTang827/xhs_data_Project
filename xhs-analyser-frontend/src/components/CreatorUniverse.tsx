@@ -54,7 +54,7 @@ export function CreatorUniverse({
             添加创作者
           </button>
         </div>
-        <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+        <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
           <CreatorNetworkGraph
             nodes={creators}
             edges={edges}

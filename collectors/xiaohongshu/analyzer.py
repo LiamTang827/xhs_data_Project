@@ -59,34 +59,37 @@ def load_snapshot(path: Path) -> Dict[str, Any]:
 def build_prompt_for_profile(user_desc: str, notes: List[Dict[str, Any]]) -> List[Dict[str, str]]:
     """构建发送给聊天模型的 prompt（以 messages 列表形式返回）。
 
-    包含用户描述（user_desc）和若干条笔记的 title/desc/tags 作为样例。
+    包含用户描述（user_desc）和若干条笔记的 title/desc 作为样例。
+    注意：TikHub API返回的笔记数据没有tag_list字段，需要AI从标题和描述中提取话题。
     """
-    # 组装笔记内容：title + desc + tags
+    # 组装笔记内容：title + desc（没有tags）
     sample_notes = []
     for n in notes[:50]:
-        tags = n.get("tag_list") or []
-        if isinstance(tags, (list, tuple)):
-            tags_s = ", ".join(tags)
-        elif isinstance(tags, dict):
-            tags_s = ", ".join(tags.values())
-        else:
-            tags_s = str(tags)
-        t = f"Title: {n.get('title','')}\nDesc: {n.get('desc','')}\nTags: {tags_s}"
+        title = n.get('title', '')
+        desc = n.get('desc', '')
+        # 提取互动数据作为参考
+        likes = n.get('likes', 0)
+        collects = n.get('collected_count', 0)
+        t = f"标题: {title}\n描述: {desc}\n互动: 👍{likes} 💾{collects}"
         sample_notes.append(t)
 
     notes_text = "\n\n".join(sample_notes)
 
     system = (
-        "你是一个有用的助手，负责从给定的用户描述和示例笔记中提取精简的用户画像（user_style）和内容主题（content_topic）。"
-        "请严格返回一个包含两个键的 JSON 对象：\"user_style\" 与 \"content_topic\"。"
-        "\n- \"user_style\" 应为一个对象，包含字段：\"persona\"（1-2 句的简短描述）、\"tone\"（描述写作/视频语气的词语）、"
-        "以及 \"interests\"（列出主要兴趣关键词）。\n- \"content_topic\" 应为一个列表，包含总结性的话题关键词或短语。\n"
+        "你是一个小红书内容分析专家。请从用户的笔记中提取：\n"
+        "1. **用户画像(user_style)**：包含persona（创作者性格/定位，1-2句）、tone（语气风格）、interests（兴趣关键词列表）\n"
+        "2. **内容主题(content_topic)**：5-8个最核心的话题关键词（用于作为"流量密码"展示）\n\n"
+        "⚠️ 注意：笔记中没有现成的标签，需要你从标题和描述中分析提取主题。\n"
+        "💡 提取话题时优先选择：领域词、高频词、行业术语、品类词、场景词。\n"
+        "例如：AI、编程、旅行、美食、科普、职场、Python、机器学习等。\n\n"
+        "严格返回JSON格式：\n"
+        '{"user_style": {"persona": "...", "tone": "...", "interests": ["..."]}, "content_topic": ["话题1", "话题2", ...]}'
     )
 
     user_msg = (
-        f"用户描述:\n{user_desc}\n\n示例笔记（title/desc/tags）：\n{notes_text}\n\n"
-        "请仅输出 JSON 对象。示例格式：\n"
-        "{\"user_style\": {\"persona\": \"...\", \"tone\": \"...\", \"interests\": [\"...\"]}, \"content_topic\": [\"topic1\", \"topic2\"]}"
+        f"用户信息:\n{user_desc}\n\n"
+        f"示例笔记（共{len(notes)}条）：\n{notes_text}\n\n"
+        "请分析以上笔记，提取用户画像和内容主题，仅输出JSON对象。"
     )
 
     return [{"role": "system", "content": system}, {"role": "user", "content": user_msg}]

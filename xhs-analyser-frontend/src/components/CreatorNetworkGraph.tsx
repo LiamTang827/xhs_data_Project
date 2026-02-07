@@ -47,13 +47,13 @@ export function CreatorNetworkGraph({
   const dragMovedRef = useRef(false);
   const lastDragTimeRef = useRef<number | null>(null);
 
-  // 计算节点半径
-  const getNodeRadius = (followers: number): number => {
-    const followerCounts = nodes.map((n) => n.followers);
-    const min = Math.min(...followerCounts);
-    const max = Math.max(...followerCounts);
+  // 计算节点半径（基于总互动数）
+  const getNodeRadius = (totalEngagement: number): number => {
+    const engagementValues = nodes.map((n) => n.totalEngagement || n.engagementIndex || 0);
+    const min = Math.min(...engagementValues);
+    const max = Math.max(...engagementValues);
     const range = max - min || 1;
-    const normalized = (followers - min) / range;
+    const normalized = (totalEngagement - min) / range;
     return 18 + normalized * 18;
   };
 
@@ -66,7 +66,7 @@ export function CreatorNetworkGraph({
       const sn: SimNode = {
         id: node.id,
         name: node.name,
-        followers: node.followers,
+        followers: node.totalEngagement || node.engagementIndex || 0, // 使用总互动数
         x: hasValidPosition ? (node.position.x / 100) * WIDTH : WIDTH / 2 + (Math.random() - 0.5) * 200,
         y: hasValidPosition ? (node.position.y / 100) * HEIGHT : HEIGHT / 2 + (Math.random() - 0.5) * 200,
         fx: null,

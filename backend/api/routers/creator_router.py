@@ -193,6 +193,28 @@ async def add_creator(request: AddCreatorRequest, background_tasks: BackgroundTa
                 {"task_id": task_id},
                 {"$set": {"result": result}}
             )
+            
+            # 如果任务成功，重新生成网络数据
+            if result.get("success"):
+                try:
+                    import subprocess
+                    import os
+                    
+                    # 获取backend目录路径
+                    backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+                    script_path = os.path.join(backend_dir, "scripts", "regenerate_creator_networks.py")
+                    
+                    # 执行脚本重新生成网络
+                    print(f"🔄 重新生成创作者网络...")
+                    subprocess.run(
+                        ["python3", script_path],
+                        cwd=backend_dir,
+                        check=True,
+                        capture_output=True
+                    )
+                    print(f"✅ 网络数据已更新")
+                except Exception as e:
+                    print(f"⚠️  重新生成网络失败（不影响添加结果）: {e}")
         
         # 添加到后台任务队列
         background_tasks.add_task(run_task)
