@@ -2,6 +2,18 @@
 
 > AI驱动的创作者内容分析与风格生成平台 | DeepSeek + MongoDB + Next.js
 
+---
+
+## 🚀 快速开始
+
+**⏱️ 5 分钟启动系统** → 查看 [**QUICKSTART.md**](QUICKSTART.md)
+
+**📖 完整使用指南** → 查看 [**PROJECT_GUIDE.md**](PROJECT_GUIDE.md)
+
+**🧹 代码清理记录** → 查看 [**CLEANUP.md**](CLEANUP.md)
+
+---
+
 ## 📊 系统架构
 
 ```mermaid

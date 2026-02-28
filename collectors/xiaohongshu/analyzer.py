@@ -78,7 +78,7 @@ def build_prompt_for_profile(user_desc: str, notes: List[Dict[str, Any]]) -> Lis
     system = (
         "你是一个小红书内容分析专家。请从用户的笔记中提取：\n"
         "1. **用户画像(user_style)**：包含persona（创作者性格/定位，1-2句）、tone（语气风格）、interests（兴趣关键词列表）\n"
-        "2. **内容主题(content_topic)**：5-8个最核心的话题关键词（用于作为"流量密码"展示）\n\n"
+        "2. **内容主题(content_topic)**：5-8个最核心的话题关键词（用于作为'流量密码'展示）\n\n"
         "⚠️ 注意：笔记中没有现成的标签，需要你从标题和描述中分析提取主题。\n"
         "💡 提取话题时优先选择：领域词、高频词、行业术语、品类词、场景词。\n"
         "例如：AI、编程、旅行、美食、科普、职场、Python、机器学习等。\n\n"

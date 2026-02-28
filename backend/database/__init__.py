@@ -8,6 +8,7 @@ from .repositories import (
     UserProfileRepository,
     UserSnapshotRepository,
     UserEmbeddingRepository,
+    NoteEmbeddingRepository,
     CreatorNetworkRepository,
     StylePromptRepository,
     PlatformConfigRepository
@@ -19,6 +20,7 @@ __all__ = [
     'UserProfileRepository',
     'UserSnapshotRepository',
     'UserEmbeddingRepository',
+    'NoteEmbeddingRepository',
     'CreatorNetworkRepository',
     'StylePromptRepository',
     'PlatformConfigRepository'

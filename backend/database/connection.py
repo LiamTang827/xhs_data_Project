@@ -28,7 +28,17 @@ def get_database() -> Database:
     global _client, _database
     
     if _database is None:
-        _client = MongoClient(MONGO_URI)
+        # 添加超时设置以避免长时间hang
+        _client = MongoClient(
+            MONGO_URI,
+            serverSelectionTimeoutMS=5000,  # 服务器选择超时5秒
+            connectTimeoutMS=5000,          # 连接超时5秒
+            socketTimeoutMS=5000,           # socket超时5秒
+            maxPoolSize=10,                 # 最大连接池大小
+            minPoolSize=1,                  # 最小连接池大小
+            retryWrites=True,               # 启用重试写入
+            retryReads=True                 # 启用重试读取
+        )
         _database = _client[DATABASE_NAME]
         print(f"✅ MongoDB连接成功: {DATABASE_NAME}")
     

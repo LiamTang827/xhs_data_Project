@@ -91,7 +91,15 @@ def fetch_user_notes(user_id: str) -> dict:
             
             # 检查响应
             if response_data.get('code') != 200:
-                print(f"\n❌ API错误: {response_data.get('message_zh', '未知错误')}")
+                error_msg = response_data.get('message_zh', response_data.get('message', '未知错误'))
+                print(f"\n❌ API错误: {error_msg}")
+                # 返回错误信息
+                return {
+                    'error': error_msg,
+                    'success': False,
+                    'user': None,
+                    'notes': []
+                }
                 break
             
             data = response_data.get('data', {}).get('data', {})
@@ -129,13 +137,27 @@ def fetch_user_notes(user_id: str) -> dict:
             # 延迟避免限流
             time.sleep(random.uniform(1.5, 3))
             
+        except requests.exceptions.Timeout:
+            print(f"\n❌ 请求超时")
+            return {
+                'error': '请求超时，请稍后重试',
+                'success': False,
+                'user': None,
+                'notes': []
+            }
         except Exception as e:
             print(f"\n❌ 请求失败: {e}")
-            break
+            return {
+                'error': f'请求失败: {str(e)}',
+                'success': False,
+                'user': None,
+                'notes': []
+            }
     
     print(f"\n✅ 总计获取 {len(all_notes)} 条笔记")
     
     return {
+        'success': True,
         'user': user_info,
         'notes': all_notes
     }

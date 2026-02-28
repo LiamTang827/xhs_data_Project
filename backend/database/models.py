@@ -78,6 +78,30 @@ class UserEmbedding(BaseModel):
     created_at: datetime = Field(default_factory=datetime.now)
 
 
+class NoteEmbedding(BaseModel):
+    """笔记向量embedding - 用于语义搜索"""
+    note_id: str = Field(description="笔记ID")
+    user_id: str = Field(description="创作者用户ID")
+    platform: PlatformType = Field(default=PlatformType.XIAOHONGSHU)
+    title: str = Field(default="", description="笔记标题")
+    desc: str = Field(default="", description="笔记描述/正文")
+    embedding: List[float] = Field(description="512维内容向量")
+    model: str = Field(default="BAAI/bge-small-zh-v1.5")
+    dimension: int = Field(default=512)
+    # 互动指标
+    likes: int = Field(default=0, description="点赞数")
+    collected_count: int = Field(default=0, description="收藏数")
+    comments_count: int = Field(default=0, description="评论数")
+    share_count: int = Field(default=0, description="分享数")
+    engagement_score: float = Field(default=0.0, description="综合互动指数")
+    # 创作者信息（冗余存储，方便搜索结果展示）
+    nickname: str = Field(default="", description="创作者昵称")
+    avatar: str = Field(default="", description="创作者头像URL")
+    # 时间
+    note_create_time: int = Field(default=0, description="笔记发布时间戳")
+    created_at: datetime = Field(default_factory=datetime.now, description="embedding生成时间")
+
+
 # =====================================================
 # 4. Creator Network Models
 # =====================================================

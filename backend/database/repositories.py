@@ -14,6 +14,7 @@ from .models import (
     UserProfile,
     UserSnapshot,
     UserEmbedding,
+    NoteEmbedding,
     CreatorNetwork,
     StylePrompt,
     StylePromptType,
@@ -82,18 +83,32 @@ class UserProfileRepository(BaseRepository):
         """
         return self.find_one({"user_id": user_id, "platform": platform})
     
-    def get_all_profiles(self, platform: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_all_profiles(self, platform: Optional[str] = None, limit: int = 100) -> List[Dict[str, Any]]:
         """
         获取所有用户档案
         
         Args:
             platform: 平台类型，None表示所有平台
+            limit: 最大返回数量，默认100
             
         Returns:
             用户档案列表
         """
         query = {"platform": platform} if platform else {}
-        return self.find_many(query)
+        # 只返回必要字段，避免加载大字段如embedding
+        projection = {
+            "user_id": 1,
+            "nickname": 1,
+            "platform": 1,
+            "basic_info": 1,
+            "profile_data": 1,
+            "stats": 1,
+            "_id": 0
+        }
+        cursor = self.collection.find(query, projection)
+        if limit > 0:
+            cursor = cursor.limit(limit)
+        return list(cursor)
     
     def create_profile(self, profile_data: Dict[str, Any]) -> str:
         """
@@ -299,8 +314,14 @@ class CreatorNetworkRepository(BaseRepository):
         Returns:
             网络数据 or None
         """
+        # 优化：只投影需要的字段，避免读取整个大文档
         result = self.collection.find_one(
             {"platform": platform},
+            {
+                "network_data": 1,
+                "created_at": 1,
+                "platform": 1
+            },
             sort=[("created_at", -1)]
         )
         return result
@@ -389,7 +410,85 @@ class StylePromptRepository(BaseRepository):
 
 
 # =====================================================
-# 6. Platform Config Repository
+# 6. Note Embedding Repository
+# =====================================================
+
+class NoteEmbeddingRepository(BaseRepository):
+    """笔记Embedding仓库 - 用于语义搜索"""
+
+    def __init__(self):
+        super().__init__("note_embeddings")
+
+    def get_by_note_id(self, note_id: str) -> Optional[Dict[str, Any]]:
+        """根据笔记ID获取embedding"""
+        return self.find_one({"note_id": note_id})
+
+    def get_by_user_id(self, user_id: str) -> List[Dict[str, Any]]:
+        """获取某用户所有笔记的embedding"""
+        return self.find_many({"user_id": user_id})
+
+    def get_all_embeddings(self, limit: int = 0) -> List[Dict[str, Any]]:
+        """获取所有笔记embedding（用于搜索时的批量加载）"""
+        projection = {
+            "note_id": 1, "user_id": 1, "title": 1, "desc": 1,
+            "embedding": 1, "likes": 1, "collected_count": 1,
+            "comments_count": 1, "share_count": 1, "engagement_score": 1,
+            "nickname": 1, "avatar": 1, "note_create_time": 1,
+            "_id": 0
+        }
+        cursor = self.collection.find({}, projection)
+        if limit > 0:
+            cursor = cursor.limit(limit)
+        return list(cursor)
+
+    def get_all_embeddings_only(self) -> List[Dict[str, Any]]:
+        """仅获取note_id和embedding向量（轻量查询，用于内存搜索）"""
+        projection = {"note_id": 1, "embedding": 1, "_id": 0}
+        return list(self.collection.find({}, projection))
+
+    def upsert_note_embedding(self, note_data: Dict[str, Any]) -> bool:
+        """插入或更新笔记embedding"""
+        note_data["created_at"] = datetime.now()
+        result = self.collection.update_one(
+            {"note_id": note_data["note_id"]},
+            {"$set": note_data},
+            upsert=True
+        )
+        return result.upserted_id is not None or result.modified_count > 0
+
+    def bulk_upsert(self, notes: List[Dict[str, Any]]) -> int:
+        """批量插入/更新笔记embedding"""
+        from pymongo import UpdateOne
+        if not notes:
+            return 0
+        operations = [
+            UpdateOne(
+                {"note_id": n["note_id"]},
+                {"$set": {**n, "created_at": datetime.now()}},
+                upsert=True
+            )
+            for n in notes
+        ]
+        result = self.collection.bulk_write(operations)
+        return result.upserted_count + result.modified_count
+
+    def get_stats(self) -> Dict[str, Any]:
+        """获取笔记embedding统计"""
+        total = self.count()
+        pipeline = [
+            {"$group": {"_id": "$user_id", "count": {"$sum": 1}}},
+            {"$count": "total_users"}
+        ]
+        user_count_result = list(self.collection.aggregate(pipeline))
+        total_users = user_count_result[0]["total_users"] if user_count_result else 0
+        return {
+            "total_notes": total,
+            "total_creators": total_users
+        }
+
+
+# =====================================================
+# 7. Platform Config Repository
 # =====================================================
 
 class PlatformConfigRepository(BaseRepository):

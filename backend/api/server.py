@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # 导入新的路由（使用Service层和Database层）
-from api.routers import style_router, creator_router, persona_router
+from api.routers import style_router, creator_router, persona_router, note_router, growth_path
 
 app = FastAPI(
     title="XHS Data Analysis API",
@@ -26,6 +26,8 @@ app.add_middleware(
 app.include_router(style_router, tags=["风格生成"])
 app.include_router(creator_router, tags=["创作者数据"])
 app.include_router(persona_router, prefix="/api", tags=["用户画像"])
+app.include_router(note_router, tags=["笔记搜索"])
+app.include_router(growth_path.router, prefix="/api/creators", tags=["成长路径"])
 
 
 @app.get("/")
@@ -47,6 +49,10 @@ async def root():
             "persona_analyze": "/api/persona/analyze",
             "persona_get": "/api/persona/{user_id}",
             "persona_list": "/api/persona",
+            "growth_path": "/api/creators/growth-path/{my_user_id}/{competitor_user_id}",
+            "competitors": "/api/creators/competitors/{user_id}",
+            "notes_search": "/api/notes/search",
+            "notes_stats": "/api/notes/stats",
             "health": "/api/health"
         },
         "docs": {

@@ -24,3 +24,4 @@ APScheduler==3.10.4
 
 # 工具库
 requests==2.31.0
+duckduckgo-search
